@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareerLens AI — Smart Career Coach</title>
+  <meta name="description" content="AI-powered career assistant: ATS analysis, cover letters, interview prep, skill gaps, and career roadmaps powered by IBM watsonx.ai and Granite." />
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+  <!-- Custom Styles -->
+  <link href="/static/css/main.css" rel="stylesheet" />
+</head>
+
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TOP NAVIGATION BAR
+════════════════════════════════════════════════════════════════════ -->
+<nav class="navbar navbar-expand-lg cl-navbar fixed-top">
+  <div class="container-fluid px-3 px-lg-4">
+    <!-- Logo -->
+    <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+      <div class="brand-icon">
+        <i class="bi bi-graph-up-arrow"></i>
+      </div>
+      <span class="brand-text">CareerLens <span class="brand-ai">AI</span></span>
+    </a>
+
+    <!-- Mobile toggle -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+      <i class="bi bi-list text-white fs-5"></i>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarMain">
+      <ul class="navbar-nav mx-auto gap-1">
+        <li class="nav-item">
+          <a class="nav-link nav-pill active" href="#" data-section="dashboard">
+            <i class="bi bi-speedometer2"></i> Dashboard
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link nav-pill" href="#" data-section="analyzer">
+            <i class="bi bi-file-earmark-text"></i> ATS Analyzer
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link nav-pill" href="#" data-section="cover">
+            <i class="bi bi-envelope-paper"></i> Cover Letter
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link nav-pill" href="#" data-section="interview">
+            <i class="bi bi-chat-quote"></i> Interview Prep
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link nav-pill" href="#" data-section="skills">
+            <i class="bi bi-lightbulb"></i> Skill Gaps
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link nav-pill" href="#" data-section="roadmap">
+            <i class="bi bi-map"></i> Roadmap
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link nav-pill" href="#" data-section="internship">
+            <i class="bi bi-briefcase"></i> Internships
+          </a>
+        </li>
+      </ul>
+
+      <div class="d-flex align-items-center gap-2">
+        <!-- User name badge -->
+        <span class="user-badge" id="userBadge" title="Click to set your name" onclick="setUserName()">
+          <i class="bi bi-person-circle"></i>
+          <span id="userName">You</span>
+        </span>
+        <!-- Theme toggle -->
+        <button class="btn btn-icon" id="themeToggle" title="Toggle theme">
+          <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
+        </button>
+        <!-- Chat toggle -->
+        <button class="btn btn-ai-chat" onclick="toggleChat()">
+          <i class="bi bi-robot"></i> AI Coach
+        </button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     FLOATING AI CHAT PANEL
+════════════════════════════════════════════════════════════════════ -->
+<div id="chatPanel" class="chat-panel">
+  <div class="chat-header">
+    <div class="d-flex align-items-center gap-2">
+      <div class="chat-avatar"><i class="bi bi-robot"></i></div>
+      <div>
+        <div class="chat-title">CareerLens AI</div>
+        <div class="chat-subtitle"><span class="status-dot"></span> Ready to help</div>
+      </div>
+    </div>
+    <div class="d-flex gap-1">
+      <button class="btn btn-icon-sm" onclick="clearChat()" title="Clear chat">
+        <i class="bi bi-trash3"></i>
+      </button>
+      <button class="btn btn-icon-sm" onclick="toggleChat()" title="Close">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-msg assistant">
+      <div class="msg-avatar"><i class="bi bi-robot"></i></div>
+      <div class="msg-bubble">
+        <p>Hi! I'm <strong>CareerLens AI</strong> — your personal career coach powered by IBM watsonx.ai & Granite.</p>
+        <p>I can help you with:</p>
+        <div class="quick-chips">
+          <span class="chip" onclick="sendQuick('How do I optimize my resume for ATS?')">Resume tips</span>
+          <span class="chip" onclick="sendQuick('How should I prepare for a technical interview?')">Interview prep</span>
+          <span class="chip" onclick="sendQuick('What skills should a data science fresher build?')">Skill advice</span>
+          <span class="chip" onclick="sendQuick('How do I write a strong cover letter?')">Cover letters</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-input-area">
+    <div class="chat-input-wrapper">
+      <textarea
+        id="chatInput"
+        class="chat-input"
+        placeholder="Ask anything about your career... (English या Hindi)"
+        rows="1"
+        maxlength="2000"
+      ></textarea>
+      <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()">
+        <i class="bi bi-send-fill"></i>
+      </button>
+    </div>
+    <div class="chat-hint">Press Enter to send · Shift+Enter for new line</div>
+  </div>
+</div>
+<div id="chatOverlay" class="chat-overlay" onclick="toggleChat()"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MAIN CONTENT AREA
+════════════════════════════════════════════════════════════════════ -->
+<main class="main-content">
+  <div class="container-fluid px-3 px-lg-4">
+
+    <!-- ── SECTION: Dashboard ─────────────────────────────────── -->
+    <section id="section-dashboard" class="content-section active">
+      <!-- Hero -->
+      <div class="hero-banner">
+        <div class="hero-bg-glow"></div>
+        <div class="row align-items-center">
+          <div class="col-lg-7">
+            <div class="hero-badge mb-3">
+              <i class="bi bi-stars"></i> Powered by IBM watsonx.ai · Granite
+            </div>
+            <h1 class="hero-title">Your AI-Powered<br><span class="text-gradient">Career Coach</span></h1>
+            <p class="hero-sub">Upload your resume, paste any job description, and get instant ATS scores, skill gap analysis, tailored cover letters, interview prep, and a personalized career roadmap.</p>
+            <div class="d-flex flex-wrap gap-3 mt-4">
+              <button class="btn btn-primary-ai" onclick="navigateTo('analyzer')">
+                <i class="bi bi-lightning-charge-fill"></i> Analyze My Resume
+              </button>
+              <button class="btn btn-outline-ai" onclick="navigateTo('roadmap')">
+                <i class="bi bi-map"></i> Career Roadmap
+              </button>
+            </div>
+          </div>
+          <div class="col-lg-5 d-none d-lg-flex justify-content-end">
+            <div class="hero-visual">
+              <div class="score-ring-hero">
+                <svg viewBox="0 0 120 120" class="ring-svg">
+                  <circle cx="60" cy="60" r="50" class="ring-bg"/>
+                  <circle cx="60" cy="60" r="50" class="ring-fill" id="heroRingFill" stroke-dasharray="0 314"/>
+                </svg>
+                <div class="ring-score-text" id="heroRingText">--</div>
+                <div class="ring-score-label">ATS Score</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+          <div class="stat-card">
+            <div class="stat-icon bg-blue"><i class="bi bi-file-earmark-check"></i></div>
+            <div class="stat-value" id="statAnalyses">0</div>
+            <div class="stat-label">Analyses Done</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="stat-card">
+            <div class="stat-icon bg-purple"><i class="bi bi-graph-up"></i></div>
+            <div class="stat-value" id="statAvgScore">--</div>
+            <div class="stat-label">Avg ATS Score</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="stat-card">
+            <div class="stat-icon bg-green"><i class="bi bi-bookmark-heart"></i></div>
+            <div class="stat-value" id="statSavedJobs">0</div>
+            <div class="stat-label">Saved Jobs</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="stat-card">
+            <div class="stat-icon bg-orange"><i class="bi bi-chat-dots"></i></div>
+            <div class="stat-value" id="statChats">0</div>
+            <div class="stat-label">AI Chats</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resume Upload Card -->
+      <div class="row g-4">
+        <div class="col-lg-5">
+          <div class="cl-card h-100">
+            <div class="cl-card-header">
+              <i class="bi bi-cloud-arrow-up-fill"></i> Resume Upload
+            </div>
+            <div class="cl-card-body">
+              <div class="upload-zone" id="uploadZone" onclick="document.getElementById('resumeFileInput').click()">
+                <div class="upload-icon">
+                  <i class="bi bi-file-earmark-person"></i>
+                </div>
+                <div class="upload-text">Drop your resume here</div>
+                <div class="upload-hint">PDF, DOCX, or TXT · Max 10MB</div>
+                <button class="btn btn-sm btn-upload mt-3">Browse File</button>
+              </div>
+              <input type="file" id="resumeFileInput" accept=".pdf,.docx,.txt" hidden onchange="uploadResume(this)"/>
+
+              <!-- Resume preview (hidden until uploaded) -->
+              <div id="resumePreview" class="resume-preview d-none">
+                <div class="resume-preview-header">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-file-earmark-check-fill text-success"></i>
+                    <span id="resumePreviewName" class="fw-medium"></span>
+                  </div>
+                  <span class="badge bg-success" id="resumeFormatBadge">PDF</span>
+                </div>
+                <div class="resume-meta" id="resumeMeta"></div>
+                <div class="resume-skills" id="resumeSkillsPreview"></div>
+                <button class="btn btn-sm btn-outline-secondary mt-2" onclick="document.getElementById('resumeFileInput').click()">
+                  <i class="bi bi-arrow-repeat"></i> Replace
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-7">
+          <!-- Quick Feature Cards -->
+          <div class="row g-3">
+            <div class="col-6" onclick="navigateTo('analyzer')">
+              <div class="feature-card">
+                <div class="feature-icon" style="background: rgba(59,130,212,0.15); color: #3b82d4">
+                  <i class="bi bi-clipboard-data"></i>
+                </div>
+                <div class="feature-title">ATS Analysis</div>
+                <div class="feature-desc">Score out of 100 with keyword breakdown</div>
+              </div>
+            </div>
+            <div class="col-6" onclick="navigateTo('cover')">
+              <div class="feature-card">
+                <div class="feature-icon" style="background: rgba(124,92,216,0.15); color: #7c5cd8">
+                  <i class="bi bi-envelope-paper-heart"></i>
+                </div>
+                <div class="feature-title">Cover Letter</div>
+                <div class="feature-desc">AI-tailored to each job description</div>
+              </div>
+            </div>
+            <div class="col-6" onclick="navigateTo('interview')">
+              <div class="feature-card">
+                <div class="feature-icon" style="background: rgba(34,197,94,0.15); color: #22c55e">
+                  <i class="bi bi-person-raised-hand"></i>
+                </div>
+                <div class="feature-title">Interview Prep</div>
+                <div class="feature-desc">Predicted questions + sample answers</div>
+              </div>
+            </div>
+            <div class="col-6" onclick="navigateTo('skills')">
+              <div class="feature-card">
+                <div class="feature-icon" style="background: rgba(234,179,8,0.15); color: #eab308">
+                  <i class="bi bi-gap-fill"></i>
+                </div>
+                <div class="feature-title">Skill Gaps</div>
+                <div class="feature-desc">Free learning resources to close gaps</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Analyses -->
+      <div class="cl-card mt-4" id="recentAnalysesCard" style="display:none">
+        <div class="cl-card-header">
+          <i class="bi bi-clock-history"></i> Recent Analyses
+        </div>
+        <div class="cl-card-body p-0">
+          <div id="recentAnalysesList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SECTION: ATS Analyzer ──────────────────────────────── -->
+    <section id="section-analyzer" class="content-section">
+      <div class="section-header">
+        <h2><i class="bi bi-clipboard-data"></i> ATS Resume Analyzer</h2>
+        <p>Paste a job description and get your match score, missing keywords, and improvement suggestions.</p>
+      </div>
+
+      <div class="row g-4">
+        <!-- Input Panel -->
+        <div class="col-lg-5">
+          <div class="cl-card">
+            <div class="cl-card-header">
+              <i class="bi bi-pencil-square"></i> Job Details
+            </div>
+            <div class="cl-card-body">
+              <div class="mb-3">
+                <label class="form-label">Job Title <span class="text-muted">(optional)</span></label>
+                <input type="text" class="form-control cl-input" id="atsJobTitle" placeholder="e.g. Data Scientist at Google" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Company <span class="text-muted">(optional)</span></label>
+                <input type="text" class="form-control cl-input" id="atsCompany" placeholder="e.g. Google, Microsoft, startup..." />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Job Description <span class="text-danger">*</span></label>
+                <textarea class="form-control cl-input" id="atsJobDescription" rows="12"
+                  placeholder="Paste the full job description here...&#10;&#10;Include requirements, responsibilities, and qualifications for best results."></textarea>
+                <div class="form-text" id="jdCharCount">0 characters</div>
+              </div>
+              <div class="mb-3" id="atsNoResumeWarn" style="display:none">
+                <div class="alert alert-warning py-2 small">
+                  <i class="bi bi-exclamation-triangle"></i> Please upload your resume first in the Dashboard.
+                </div>
+              </div>
+              <button class="btn btn-primary-ai w-100" onclick="runATSAnalysis()" id="atsBtn">
+                <i class="bi bi-lightning-charge-fill"></i> Analyze Match
+              </button>
+              <div class="mt-2 d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary flex-fill" onclick="saveCurrentJob()">
+                  <i class="bi bi-bookmark"></i> Save Job
+                </button>
+                <button class="btn btn-sm btn-outline-secondary flex-fill" onclick="generateCoverFromAnalyzer()">
+                  <i class="bi bi-envelope-paper"></i> Cover Letter
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Results Panel -->
+        <div class="col-lg-7">
+          <!-- Score Display -->
+          <div class="cl-card mb-4" id="atsScoreCard" style="display:none">
+            <div class="cl-card-body">
+              <div class="ats-result-header">
+                <div class="ats-score-circle">
+                  <svg viewBox="0 0 120 120" class="ring-svg-sm">
+                    <circle cx="60" cy="60" r="50" class="ring-bg"/>
+                    <circle cx="60" cy="60" r="50" class="ring-fill" id="atsRingFill" stroke-dasharray="0 314"/>
+                  </svg>
+                  <div class="ring-inner">
+                    <span class="ring-num" id="atsScoreNum">0</span>
+                    <span class="ring-denom">/100</span>
+                  </div>
+                </div>
+                <div class="ats-verdict-area">
+                  <div class="ats-verdict-badge" id="atsVerdictBadge">Analyzing...</div>
+                  <div class="ats-role-fit mt-2" id="atsRoleFit"></div>
+                </div>
+              </div>
+
+              <!-- Score breakdown bars -->
+              <div class="score-breakdown mt-4" id="scoreBreakdown"></div>
+            </div>
+          </div>
+
+          <!-- Skills Match / Missing -->
+          <div class="row g-3" id="skillsResultRow" style="display:none">
+            <div class="col-md-6">
+              <div class="cl-card skill-card h-100">
+                <div class="cl-card-header text-success">
+                  <i class="bi bi-check-circle-fill"></i> Matched Skills
+                </div>
+                <div class="cl-card-body" id="matchedSkillsList"></div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="cl-card skill-card h-100">
+                <div class="cl-card-header text-danger">
+                  <i class="bi bi-x-circle-fill"></i> Missing Keywords
+                </div>
+                <div class="cl-card-body" id="missingKeywordsList"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Improvement Suggestions -->
+          <div class="cl-card mt-3" id="improvementsCard" style="display:none">
+            <div class="cl-card-header">
+              <i class="bi bi-arrow-up-circle-fill"></i> Improvement Actions
+            </div>
+            <div class="cl-card-body" id="improvementsList"></div>
+          </div>
+
+          <!-- Bullet Rewrites -->
+          <div class="cl-card mt-3" id="bulletRewritesCard" style="display:none">
+            <div class="cl-card-header">
+              <i class="bi bi-pencil-fill"></i> Resume Bullet Rewrites
+            </div>
+            <div class="cl-card-body" id="bulletRewritesList"></div>
+          </div>
+
+          <!-- Placeholder -->
+          <div id="atsPlaceholder" class="placeholder-state">
+            <i class="bi bi-clipboard-data"></i>
+            <p>Paste a job description and click <strong>Analyze Match</strong> to see your ATS score</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SECTION: Cover Letter ──────────────────────────────── -->
+    <section id="section-cover" class="content-section">
+      <div class="section-header">
+        <h2><i class="bi bi-envelope-paper-heart"></i> Cover Letter Generator</h2>
+        <p>Generate a tailored, professional cover letter in seconds.</p>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-lg-5">
+          <div class="cl-card">
+            <div class="cl-card-header"><i class="bi bi-sliders"></i> Configuration</div>
+            <div class="cl-card-body">
+              <div class="mb-3">
+                <label class="form-label">Your Full Name</label>
+                <input type="text" class="form-control cl-input" id="coverUserName" placeholder="e.g. Rahul Sharma" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Job Description <span class="text-danger">*</span></label>
+                <textarea class="form-control cl-input" id="coverJobDescription" rows="10"
+                  placeholder="Paste the job description..."></textarea>
+              </div>
+              <button class="btn btn-primary-ai w-100" onclick="generateCoverLetter()" id="coverBtn">
+                <i class="bi bi-magic"></i> Generate Cover Letter
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-7">
+          <div class="cl-card h-100">
+            <div class="cl-card-header">
+              <i class="bi bi-file-text"></i> Generated Cover Letter
+              <div class="ms-auto d-flex gap-2" id="coverActions" style="display:none!important">
+                <button class="btn btn-sm btn-outline-secondary" onclick="copyCoverLetter()" id="coverCopyBtn">
+                  <i class="bi bi-clipboard"></i> Copy
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="downloadCoverLetter()">
+                  <i class="bi bi-download"></i> Download
+                </button>
+              </div>
+            </div>
+            <div class="cl-card-body">
+              <div id="coverLetterResult" class="cover-letter-display d-none"></div>
+              <div id="coverPlaceholder" class="placeholder-state">
+                <i class="bi bi-envelope-paper"></i>
+                <p>Your personalized cover letter will appear here</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SECTION: Interview Prep ───────────────────────────── -->
+    <section id="section-interview" class="content-section">
+      <div class="section-header">
+        <h2><i class="bi bi-chat-quote"></i> Interview Preparation</h2>
+        <p>Get predicted interview questions with sample answers and prep tips.</p>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-lg-4">
+          <div class="cl-card">
+            <div class="cl-card-header"><i class="bi bi-input-cursor-text"></i> Job Info</div>
+            <div class="cl-card-body">
+              <div class="mb-3">
+                <label class="form-label">Job Description <span class="text-danger">*</span></label>
+                <textarea class="form-control cl-input" id="interviewJD" rows="10"
+                  placeholder="Paste the job description..."></textarea>
+              </div>
+              <button class="btn btn-primary-ai w-100" onclick="generateInterviewQuestions()" id="interviewBtn">
+                <i class="bi bi-chat-dots-fill"></i> Generate Questions
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          <div id="interviewPlaceholder" class="placeholder-state">
+            <i class="bi bi-mic"></i>
+            <p>Predicted interview questions will appear here</p>
+          </div>
+
+          <!-- Interview Results -->
+          <div id="interviewResults" style="display:none">
+            <!-- Tabs -->
+            <ul class="nav cl-tabs mb-3" id="interviewTabs">
+              <li class="nav-item">
+                <a class="nav-link cl-tab active" data-tab="behavioral">
+                  <i class="bi bi-person-badge"></i> Behavioral
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link cl-tab" data-tab="technical">
+                  <i class="bi bi-code-slash"></i> Technical
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link cl-tab" data-tab="situational">
+                  <i class="bi bi-diagram-3"></i> Situational
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link cl-tab" data-tab="checklist">
+                  <i class="bi bi-check2-square"></i> Prep Checklist
+                </a>
+              </li>
+            </ul>
+
+            <div id="tab-behavioral" class="interview-tab-pane" id="interviewBehavioral"></div>
+            <div id="tab-technical" class="interview-tab-pane" style="display:none" id="interviewTechnical"></div>
+            <div id="tab-situational" class="interview-tab-pane" style="display:none" id="interviewSituational"></div>
+            <div id="tab-checklist" class="interview-tab-pane" style="display:none" id="interviewChecklist"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SECTION: Skill Gaps ───────────────────────────────── -->
+    <section id="section-skills" class="content-section">
+      <div class="section-header">
+        <h2><i class="bi bi-lightbulb"></i> Skill Gap Tracker</h2>
+        <p>Identify what you're missing and get free learning resources to close the gaps.</p>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-lg-4">
+          <div class="cl-card">
+            <div class="cl-card-header"><i class="bi bi-bullseye"></i> Target Job</div>
+            <div class="cl-card-body">
+              <div class="mb-3">
+                <label class="form-label">Job Description <span class="text-danger">*</span></label>
+                <textarea class="form-control cl-input" id="skillsJD" rows="10"
+                  placeholder="Paste job description..."></textarea>
+              </div>
+              <button class="btn btn-primary-ai w-100" onclick="runSkillGapAnalysis()" id="skillsBtn">
+                <i class="bi bi-search-heart"></i> Find Skill Gaps
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          <div id="skillsPlaceholder" class="placeholder-state">
+            <i class="bi bi-lightbulb"></i>
+            <p>Your skill gap analysis and free learning resources will appear here</p>
+          </div>
+
+          <div id="skillsResults" style="display:none">
+            <!-- Quick Wins -->
+            <div class="cl-card mb-3" id="quickWinsCard">
+              <div class="cl-card-header text-warning">
+                <i class="bi bi-lightning-fill"></i> Quick Wins This Week
+              </div>
+              <div class="cl-card-body" id="quickWinsList"></div>
+            </div>
+
+            <!-- Critical Gaps -->
+            <div class="cl-card mb-3">
+              <div class="cl-card-header text-danger">
+                <i class="bi bi-exclamation-octagon-fill"></i> Critical Skill Gaps
+              </div>
+              <div class="cl-card-body" id="criticalGapsList"></div>
+            </div>
+
+            <!-- Learning Roadmap -->
+            <div class="cl-card mb-3">
+              <div class="cl-card-header">
+                <i class="bi bi-calendar4-week"></i> Week-by-Week Learning Plan
+              </div>
+              <div class="cl-card-body" id="learningRoadmapList"></div>
+            </div>
+
+            <!-- Career Advice -->
+            <div class="cl-card">
+              <div class="cl-card-header">
+                <i class="bi bi-chat-heart-fill"></i> Personalized Advice
+              </div>
+              <div class="cl-card-body" id="careerAdviceText"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SECTION: Career Roadmap ───────────────────────────── -->
+    <section id="section-roadmap" class="content-section">
+      <div class="section-header">
+        <h2><i class="bi bi-map"></i> Career Roadmap</h2>
+        <p>Get a personalized step-by-step plan to reach your target role.</p>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-lg-4">
+          <div class="cl-card">
+            <div class="cl-card-header"><i class="bi bi-geo-alt"></i> Your Goal</div>
+            <div class="cl-card-body">
+              <div class="mb-3">
+                <label class="form-label">Target Role <span class="text-danger">*</span></label>
+                <input type="text" class="form-control cl-input" id="roadmapTargetRole"
+                  placeholder="e.g. Senior Data Scientist, Product Manager, Full Stack Developer" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Note</label>
+                <p class="small text-muted">Upload your resume from the Dashboard for a personalized roadmap. Without a resume, a general roadmap will be generated.</p>
+              </div>
+              <button class="btn btn-primary-ai w-100" onclick="generateRoadmap()" id="roadmapBtn">
+                <i class="bi bi-signpost-2-fill"></i> Generate Roadmap
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          <div id="roadmapPlaceholder" class="placeholder-state">
+            <i class="bi bi-map"></i>
+            <p>Your personalized career roadmap will appear here</p>
+          </div>
+
+          <div id="roadmapResults" style="display:none">
+            <!-- Overview -->
+            <div class="cl-card mb-3">
+              <div class="cl-card-body">
+                <div class="roadmap-overview" id="roadmapOverview"></div>
+              </div>
+            </div>
+            <!-- Phases -->
+            <div id="roadmapPhases"></div>
+            <!-- Internship Opportunities -->
+            <div class="cl-card mt-3" id="internshipOppsCard" style="display:none">
+              <div class="cl-card-header">
+                <i class="bi bi-briefcase-fill"></i> Internship Opportunities
+              </div>
+              <div class="cl-card-body" id="internshipOppsList"></div>
+            </div>
+            <!-- Motivational Note -->
+            <div class="cl-card mt-3" id="motivNoteCard" style="display:none">
+              <div class="cl-card-body">
+                <blockquote class="motivational-quote" id="motivNote"></blockquote>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SECTION: Internship Fit ───────────────────────────── -->
+    <section id="section-internship" class="content-section">
+      <div class="section-header">
+        <h2><i class="bi bi-briefcase"></i> Internship Fit Analyzer</h2>
+        <p>Get a fresher-friendly internship match score with application recommendations.</p>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-lg-5">
+          <div class="cl-card">
+            <div class="cl-card-header"><i class="bi bi-clipboard-check"></i> Internship Details</div>
+            <div class="cl-card-body">
+              <div class="mb-3">
+                <label class="form-label">Internship Description <span class="text-danger">*</span></label>
+                <textarea class="form-control cl-input" id="internshipJD" rows="12"
+                  placeholder="Paste the internship job description..."></textarea>
+              </div>
+              <button class="btn btn-primary-ai w-100" onclick="runInternshipFit()" id="internshipBtn">
+                <i class="bi bi-search-heart"></i> Check My Fit
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-7">
+          <div id="internshipPlaceholder" class="placeholder-state">
+            <i class="bi bi-briefcase"></i>
+            <p>Your internship fit score will appear here</p>
+          </div>
+
+          <div id="internshipResults" style="display:none">
+            <!-- Score Card -->
+            <div class="cl-card mb-3">
+              <div class="cl-card-body text-center">
+                <div class="internship-score-display">
+                  <div class="intern-score-num" id="internshipScoreNum">0</div>
+                  <div class="intern-score-label">Internship Fit Score</div>
+                  <div class="intern-recommendation mt-2" id="internshipRecommendation"></div>
+                </div>
+                <div class="intern-indicators mt-3" id="internIndicators"></div>
+              </div>
+            </div>
+
+            <!-- Matched / Missing Skills -->
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="cl-card skill-card">
+                  <div class="cl-card-header text-success"><i class="bi bi-check-circle-fill"></i> You Have</div>
+                  <div class="cl-card-body" id="internMatchedSkills"></div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="cl-card skill-card">
+                  <div class="cl-card-header text-danger"><i class="bi bi-x-circle-fill"></i> To Learn</div>
+                  <div class="cl-card-body" id="internMissingSkills"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Job Platforms -->
+            <div class="cl-card mt-3">
+              <div class="cl-card-header"><i class="bi bi-search"></i> Apply On These Platforms</div>
+              <div class="cl-card-body" id="internPlatforms"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /container -->
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     LOADING OVERLAY
+════════════════════════════════════════════════════════════════════ -->
+<div id="loadingOverlay" class="loading-overlay" style="display:none">
+  <div class="loading-box">
+    <div class="loading-dots">
+      <span></span><span></span><span></span>
+    </div>
+    <div class="loading-text" id="loadingText">Analyzing with IBM watsonx.ai...</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TOAST NOTIFICATIONS
+════════════════════════════════════════════════════════════════════ -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:9999">
+  <div id="toastMsg" class="toast align-items-center border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="toastBody"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Main App JS -->
+<script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+# ============================================================
+#   CareerLens AI — Python Dependencies (Python 3.14 compatible)
+# ============================================================
+
+# --- Web Framework ---
+flask
+flask-cors
+flask-sqlalchemy
+Werkzeug
+gunicorn
+
+# --- IBM watsonx.ai SDK ---
+ibm-watsonx-ai
+ibm-cloud-sdk-core
+
+# --- Document Parsing ---
+PyPDF2
+pdfminer.six
+python-docx
+chardet
+
+# --- Utilities ---
+python-dotenv
+requests
+bleach
+
+# --- Database ---
+SQLAlchemy
+alembic

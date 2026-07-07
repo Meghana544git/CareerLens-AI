@@ -1,0 +1,11 @@
+---
+applications:
+- name: careerlens-ai
+  memory: 512M
+  instances: 1
+  buildpack: python_buildpack
+  command: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+  env:
+    FLASK_ENV: production
+    FLASK_DEBUG: "False"
+    # Set IBM_API_KEY and IBM_PROJECT_ID via cf set-env or IBM Cloud dashboard
