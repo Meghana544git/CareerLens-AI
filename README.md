@@ -1,7 +1,7 @@
 # CareerLens AI 🚀
 ### AI-Powered Career Coach — IBM watsonx.ai × Granite
 
-👉 **Live Demo:** [https://your-railway-url.up.railway.app/](https://web-production-6a332.up.railway.app/)
+👉 **Live Demo:** [https://careerlens.ai/](https://web-production-6a332.up.railway.app/)
 
 [![Python](https://img.shields.io/badge/Python-3.11-blue)](https://python.org)
 [![Flask](https://img.shields.io/badge/Flask-3.0-green)](https://flask.palletsprojects.com)
