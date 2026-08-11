@@ -33,19 +33,19 @@ logger = logging.getLogger("careerlens")
 
 # ─── App Factory ──────────────────────────────────────────────────────────────
 def create_app():
-    app = Flask(
-        __name__,
+    app = Flask(__name__,
         template_folder=str(BASE_DIR / "frontend" / "templates"),
         static_folder=str(BASE_DIR / "frontend" / "static"),
+        instance_path="/tmp"
     )
 
     # Configuration
     app.secret_key = os.getenv("FLASK_SECRET_KEY", os.urandom(32).hex())
     app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("MAX_UPLOAD_MB", 10)) * 1024 * 1024
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///careerlens.db")
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:////tmp/careerlens.db")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-    UPLOAD_FOLDER = BASE_DIR / "uploads"
+    UPLOAD_FOLDER = Path("/tmp") / "uploads"
     UPLOAD_FOLDER.mkdir(exist_ok=True)
     app.config["UPLOAD_FOLDER"] = str(UPLOAD_FOLDER)
 
