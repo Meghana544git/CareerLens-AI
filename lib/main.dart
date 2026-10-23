@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:cookie_jar/cookie_jar.dart';
-import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'api/session_config.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -46,7 +45,7 @@ class _ShellState extends State<Shell> {
  @override void initState(){super.initState(); init();}
  Future<void> init() async {final p=await SharedPreferences.getInstance();base.text=p.getString('career_api')??base.text; connect(base.text,save:false);}
  @override void dispose(){base.dispose();chat.dispose();for(final m in forms.values){for(final c in m.values){c.dispose();}}super.dispose();}
- void connect(String url,{bool save=true}){url=url.trim().replaceAll(RegExp(r'/+$'),'');if(url.isEmpty){setState(()=>error='Enter your backend URL.');return;}dio=Dio(BaseOptions(baseUrl:url,connectTimeout:const Duration(seconds:20),receiveTimeout:const Duration(seconds:90),sendTimeout:const Duration(seconds:90),headers:{'Accept':'application/json'}));dio!.interceptors.add(CookieManager(CookieJar()));if(save)SharedPreferences.getInstance().then((p)=>p.setString('career_api',url));setState(()=>error=null);_loadStats();}
+ void connect(String url,{bool save=true}){url=url.trim().replaceAll(RegExp(r'/+$'),'');if(url.isEmpty){setState(()=>error='Enter your backend URL.');return;}dio=Dio(BaseOptions(baseUrl:url,connectTimeout:const Duration(seconds:20),receiveTimeout:const Duration(seconds:90),sendTimeout:const Duration(seconds:90),headers:{'Accept':'application/json'}));configureSession(dio!);if(save)SharedPreferences.getInstance().then((p)=>p.setString('career_api',url));setState(()=>error=null);_loadStats();}
  Future<dynamic> call(String path,{Map<String,dynamic>? data}) async {final r=data==null?await dio!.get(path):await dio!.post(path,data:data,options:Options(contentType:Headers.jsonContentType));final b=r.data;if(b is Map&&b['success']==false)throw Exception(b['error']??'Request failed');return b is Map&&b.containsKey('data')?b['data']:b;}
  Future<dynamic> deleteApi(String path) async {final r=await dio!.delete(path);final b=r.data;if(b is Map&&b['success']==false)throw Exception(b['error']??'Request failed');return b is Map&&b.containsKey('data')?b['data']:b;}
  Future<void> copyText(String value) async {await Clipboard.setData(ClipboardData(text:value));toast('Copied to clipboard.');}
