@@ -1,3 +1,4 @@
+# Validates the Dart client and generates committed Android, web, and Windows runner projects.
 name: Flutter build and platform scaffolding
 on:
   push:
