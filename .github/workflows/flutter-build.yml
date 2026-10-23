@@ -1,0 +1,56 @@
+name: Flutter build and platform scaffolding
+on:
+  push:
+    branches: [flutter-app]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: flutter-app
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate Flutter platform projects
+        run: flutter create --project-name career_lens_ai --platforms android,web,windows .
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Format Dart source
+        run: dart format lib/main.dart
+      - name: Analyze Flutter source
+        run: flutter analyze
+      - name: Build Android APK
+        run: flutter build apk --debug
+      - name: Build Flutter Web
+        run: flutter build web
+      - name: Commit generated platform folders
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android web windows
+          if ! git diff --cached --quiet; then
+            git commit -m "Generate Flutter platform runners"
+            git push origin flutter-app
+          else
+            echo "Platform runners already committed."
+          fi
+      - name: Upload Android debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: careerlens-ai-android-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
+      - name: Upload web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: careerlens-ai-web
+          path: build/web/
