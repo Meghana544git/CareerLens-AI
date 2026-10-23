@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:cookie_jar/cookie_jar.dart';
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -43,7 +45,7 @@ class _ShellState extends State<Shell> {
  @override void initState(){super.initState(); init();}
  Future<void> init() async {final p=await SharedPreferences.getInstance();base.text=p.getString('career_api')??base.text; connect(base.text,save:false);}
  @override void dispose(){base.dispose();chat.dispose();for(final m in forms.values){for(final c in m.values){c.dispose();}}super.dispose();}
- void connect(String url,{bool save=true}){url=url.trim().replaceAll(RegExp(r'/+$'),'');if(url.isEmpty){setState(()=>error='Enter your backend URL.');return;}dio=Dio(BaseOptions(baseUrl:url,connectTimeout:const Duration(seconds:20),receiveTimeout:const Duration(seconds:90),sendTimeout:const Duration(seconds:90),headers:{'Accept':'application/json'}));if(save)SharedPreferences.getInstance().then((p)=>p.setString('career_api',url));setState(()=>error=null);}
+ void connect(String url,{bool save=true}){url=url.trim().replaceAll(RegExp(r'/+$'),'');if(url.isEmpty){setState(()=>error='Enter your backend URL.');return;}dio=Dio(BaseOptions(baseUrl:url,connectTimeout:const Duration(seconds:20),receiveTimeout:const Duration(seconds:90),sendTimeout:const Duration(seconds:90),headers:{'Accept':'application/json'}));dio!.interceptors.add(CookieManager(CookieJar()));if(save)SharedPreferences.getInstance().then((p)=>p.setString('career_api',url));setState(()=>error=null);}
  Future<dynamic> call(String path,{Map<String,dynamic>? data}) async {final r=data==null?await dio!.get(path):await dio!.post(path,data:data,options:Options(contentType:Headers.jsonContentType));final b=r.data;if(b is Map&&b['success']==false)throw Exception(b['error']??'Request failed');return b is Map&&b.containsKey('data')?b['data']:b;}
  Map<String,TextEditingController> ctrls(String id,List<Field> fields)=>forms.putIfAbsent(id,()=>{for(final f in fields) f.key:TextEditingController(text:f.key=='resume_text'?(resumeText??''):'')});
  String pretty(dynamic v)=>const JsonEncoder.withIndent('  ').convert(v);
