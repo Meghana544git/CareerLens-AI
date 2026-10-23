@@ -78,10 +78,127 @@ class _ShellState extends State<Shell> {
  Widget _topbar(bool wide)=>Container(height:72,padding:EdgeInsets.symmetric(horizontal:wide?30:12),decoration:const BoxDecoration(border:Border(bottom:BorderSide(color:Color(0xFFE9EAF2)))),child:Row(children:[if(!wide)PopupMenuButton<int>(icon:const Icon(Icons.menu),onSelected:go,itemBuilder:(c)=>[for(int i=0;i<nav.length;i++)PopupMenuItem(value:i,child:Text(nav[i]))]),Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[Text(nav[page],style:const TextStyle(fontWeight:FontWeight.w800,fontSize:17)),const Text('Your personal AI career workspace',style:TextStyle(color:muted,fontSize:11))])),IconButton(onPressed:()=>go(12),icon:const Icon(Icons.settings_outlined)),Container(width:36,height:36,decoration:BoxDecoration(color:const Color(0xFFE4E0FF),borderRadius:BorderRadius.circular(12)),child:const Center(child:Text('CL',style:TextStyle(color:purple,fontWeight:FontWeight.w800))))]));
  Widget _content(){if(page==0)return _dashboard();if(page==1)return _resumePage();if(page>=2&&page<=8)return _toolPage(tools[page-2]);if(page==9)return _comparePage();if(page==10)return _chatPage();if(page==11)return _jobsPage();return _settings();}
  Widget _wrap(Widget child)=>SingleChildScrollView(padding:const EdgeInsets.all(24),child:Center(child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:1160),child:child)));
- Widget _dashboard()=>_wrap(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-  Container(width:double.infinity,padding:const EdgeInsets.all(26),decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFF28234D),Color(0xFF6557E8),Color(0xFF8F83F3)]),borderRadius:BorderRadius.circular(23)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Container(padding:const EdgeInsets.symmetric(vertical:6,horizontal:10),decoration:BoxDecoration(color:Colors.white.withValues(alpha:.15),borderRadius:BorderRadius.circular(30)),child:const Text('YOUR AI CAREER PARTNER',style:TextStyle(color:Colors.white,fontSize:9,letterSpacing:1.6))),const SizedBox(height:18),Text('Your next opportunity\nstarts with a stronger you.',style:GoogleFonts.inter(fontWeight:FontWeight.w800,fontSize:28,height:1.2,color:Colors.white,letterSpacing:-.8)),const SizedBox(height:10),const Text('Analyze. Improve. Practice. Get ready to stand out.',style:TextStyle(color:Color(0xFFE9E6FF),fontSize:12)),const SizedBox(height:22),Wrap(spacing:10,children:[FilledButton.icon(onPressed:()=>go(1),icon:const Icon(Icons.upload_file),label:const Text('Upload resume'),style:FilledButton.styleFrom(backgroundColor:Colors.white,foregroundColor:purple)),OutlinedButton.icon(onPressed:()=>go(2),icon:const Icon(Icons.radar),label:const Text('Run ATS scan'),style:OutlinedButton.styleFrom(foregroundColor:Colors.white,side:const BorderSide(color:Colors.white54)))])]),
-  const SizedBox(height:22),Row(children:[Expanded(child:_stat('Resume',resumeName??'Not uploaded',Icons.article_outlined)),const SizedBox(width:12),Expanded(child:_stat('Average ATS score',((dashboardStats is Map?dashboardStats['avg_ats_score']:null)??'—').toString(),Icons.radar_rounded)),const SizedBox(width:12),Expanded(child:_stat('Saved jobs',((dashboardStats is Map?dashboardStats['saved_jobs']:null)??savedJobs.length).toString(),Icons.bookmark_border))]),const SizedBox(height:25),const Text('Explore your career tools',style:TextStyle(fontWeight:FontWeight.w800,fontSize:18)),const SizedBox(height:5),const Text('Choose a tool and strengthen your next application.',style:TextStyle(color:muted,fontSize:12)),const SizedBox(height:14),LayoutBuilder(builder:(c,b){final n=b.maxWidth>850?3:b.maxWidth>550?2:1;final extra=[('Compare Jobs','Compare up to five roles',Icons.compare_arrows,9),('AI Career Coach','Personal guidance in English or Hindi',Icons.chat_bubble_outline,10)];return GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:n,crossAxisSpacing:12,mainAxisSpacing:12,childAspectRatio:n==1?3.4:1.65,children:[for(final entry in tools.asMap().entries)_toolCard(entry.value,entry.key+2),for(final e in extra)_quickCard(e.$1,e.$2,e.$3,e.$4)]);}),if(error!=null)_error(error!)]));
- Widget _stat(String label,String value,IconData icon)=>Card(child:Padding(padding:const EdgeInsets.all(15),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(icon,color:purple,size:22),const SizedBox(height:13),Text(value,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:15),maxLines:1,overflow:TextOverflow.ellipsis),const SizedBox(height:4),Text(label,style:const TextStyle(fontSize:11,color:muted))])));
+ Widget _dashboard() => _wrap(
+    Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(26),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF28234D), Color(0xFF6557E8), Color(0xFF8F83F3)],
+            ),
+            borderRadius: BorderRadius.circular(23),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .15),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: const Text(
+                  'YOUR AI CAREER PARTNER',
+                  style: TextStyle(color: Colors.white, fontSize: 9, letterSpacing: 1.6),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Your next opportunity\nstarts with a stronger you.',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 28,
+                  height: 1.2,
+                  color: Colors.white,
+                  letterSpacing: -.8,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Analyze. Improve. Practice. Get ready to stand out.',
+                style: TextStyle(color: Color(0xFFE9E6FF), fontSize: 12),
+              ),
+              const SizedBox(height: 22),
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () => go(1),
+                    icon: const Icon(Icons.upload_file),
+                    label: const Text('Upload resume'),
+                    style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: purple),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => go(2),
+                    icon: const Icon(Icons.radar),
+                    label: const Text('Run ATS scan'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white54),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 22),
+        Row(
+          children: [
+            Expanded(child: _stat('Resume', resumeName ?? 'Not uploaded', Icons.article_outlined)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _stat(
+                'Average ATS score',
+                ((dashboardStats is Map ? dashboardStats['avg_ats_score'] : null) ?? '—').toString(),
+                Icons.radar_rounded,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _stat(
+                'Saved jobs',
+                ((dashboardStats is Map ? dashboardStats['saved_jobs'] : null) ?? savedJobs.length).toString(),
+                Icons.bookmark_border,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 25),
+        const Text('Explore your career tools', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+        const SizedBox(height: 5),
+        const Text('Choose a tool and strengthen your next application.', style: TextStyle(color: muted, fontSize: 12)),
+        const SizedBox(height: 14),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth > 850 ? 3 : (constraints.maxWidth > 550 ? 2 : 1);
+            final extra = [
+              ('Compare Jobs', 'Compare up to five roles', Icons.compare_arrows, 9),
+              ('AI Career Coach', 'Personal guidance in English or Hindi', Icons.chat_bubble_outline, 10),
+            ];
+            return GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: columns,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: columns == 1 ? 3.4 : 1.65,
+              children: [
+                for (final entry in tools.asMap().entries) _toolCard(entry.value, entry.key + 2),
+                for (final item in extra) _quickCard(item.$1, item.$2, item.$3, item.$4),
+              ],
+            );
+          },
+        ),
+        if (error != null) _error(error!),
+      ],
+    ),
+  );
+  Widget _stat(String label,String value,IconData icon)=>Card(child:Padding(padding:const EdgeInsets.all(15),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(icon,color:purple,size:22),const SizedBox(height:13),Text(value,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:15),maxLines:1,overflow:TextOverflow.ellipsis),const SizedBox(height:4),Text(label,style:const TextStyle(fontSize:11,color:muted))])));
  Widget _toolCard(Tool t,int index)=>InkWell(onTap:()=>go(index),borderRadius:BorderRadius.circular(18),child:Card(child:Padding(padding:const EdgeInsets.all(17),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Container(width:39,height:39,decoration:BoxDecoration(color:const Color(0xFFF0EEFF),borderRadius:BorderRadius.circular(12)),child:Icon(t.icon,color:purple)),const Spacer(),Text(t.title,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w800)),const SizedBox(height:5),Text(t.subtitle,style:const TextStyle(fontSize:10,color:muted),maxLines:2,overflow:TextOverflow.ellipsis)]))));
  Widget _quickCard(String title,String subtitle,IconData icon,int index)=>InkWell(onTap:()=>go(index),borderRadius:BorderRadius.circular(18),child:Card(child:Padding(padding:const EdgeInsets.all(17),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(icon,color:purple,size:28),const Spacer(),Text(title,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w800)),const SizedBox(height:5),Text(subtitle,style:const TextStyle(fontSize:10,color:muted))]))));
  Widget _resumePage()=>_wrap(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Your resume',style:TextStyle(fontSize:22,fontWeight:FontWeight.w800)),const SizedBox(height:6),const Text('Upload PDF, DOCX, or TXT to enable career analysis.',style:TextStyle(color:muted,fontSize:12)),const SizedBox(height:18),Card(child:Padding(padding:const EdgeInsets.all(28),child:Column(children:[const Icon(Icons.cloud_upload_outlined,size:50,color:purple),const SizedBox(height:12),Text(resumeName??'Upload your resume',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w800)),const SizedBox(height:7),const Text('PDF, DOCX and TXT supported',style:TextStyle(fontSize:12,color:muted)),const SizedBox(height:18),FilledButton.icon(onPressed:busy?null:upload,icon:const Icon(Icons.file_upload_outlined),label:Text(busy?'Uploading…':'Choose resume')),if(outputs['upload']!=null)...[const SizedBox(height:20),_result(outputs['upload'])]]))),const SizedBox(height:15),const Text('After uploading',style:TextStyle(fontSize:16,fontWeight:FontWeight.w800)),const SizedBox(height:9),for(final e in [('ATS analysis','Match your resume against a job description.',2),('Skill gap analysis','Discover missing requirements.',5),('Resume bullet rewriter','Strengthen your experience bullets.',8)])Card(child:ListTile(leading:const Icon(Icons.check_circle_outline,color:purple),title:Text(e.$1,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w700)),subtitle:Text(e.$2,style:const TextStyle(fontSize:11,color:muted)),trailing:const Icon(Icons.chevron_right),onTap:()=>go(e.$3))),if(error!=null)_error(error!)]));
