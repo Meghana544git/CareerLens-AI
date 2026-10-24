@@ -5,7 +5,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'pdf_download.dart';
@@ -37,19 +36,82 @@ const tools=<Tool>[
 ];
 class Shell extends StatefulWidget { const Shell({super.key}); @override State<Shell> createState()=>_ShellState(); }
 class _ShellState extends State<Shell> {
- final base=TextEditingController(text:'https://career-lens-ai-gilt.vercel.app');
  final chat=TextEditingController();
  final forms=<String,Map<String,TextEditingController>>{};
  final outputs=<String,dynamic>{};
  final messages=<Map<String,String>>[];
- Dio? dio; String? resumeName,resumeText,error; bool busy=false; int page=0; List<dynamic> savedJobs=[]; dynamic dashboardStats; bool historyLoaded=false;
+ Dio? dio; String? resumeName,resumeText,error; bool busy=false; bool connecting=false; bool serviceConnected=false; int page=0; List<dynamic> savedJobs=[]; dynamic dashboardStats; bool historyLoaded=false;
  final nav=<String>['Overview','My Resume','ATS Score','Cover Letter','Interview Prep','Skill Gaps','Career Roadmap','Internship Fit','Improve Resume','Compare Jobs','Career Coach','Saved Jobs','Settings'];
  final icons=<IconData>[Icons.grid_view_rounded,Icons.article_outlined,Icons.radar_rounded,Icons.description_outlined,Icons.forum_outlined,Icons.track_changes_rounded,Icons.route_rounded,Icons.school_outlined,Icons.auto_awesome_outlined,Icons.compare_arrows_rounded,Icons.chat_bubble_outline,Icons.bookmark_border_rounded,Icons.settings_outlined];
- @override void initState(){super.initState(); init();}
- Future<void> init() async {final p=await SharedPreferences.getInstance();base.text=p.getString('career_api')??base.text; connect(base.text,save:false);}
- @override void dispose(){base.dispose();chat.dispose();for(final m in forms.values){for(final c in m.values){c.dispose();}}super.dispose();}
- void connect(String url,{bool save=true}){url=url.trim().replaceAll(RegExp(r'/+$'),'');if(url.isEmpty){setState(()=>error='Enter your backend URL.');return;}dio=Dio(BaseOptions(baseUrl:url,connectTimeout:const Duration(seconds:20),receiveTimeout:const Duration(seconds:90),sendTimeout:const Duration(seconds:90),headers:{'Accept':'application/json'}));configureSession(dio!);if(save)SharedPreferences.getInstance().then((p)=>p.setString('career_api',url));setState(()=>error=null);_loadStats();}
- Future<dynamic> call(String path,{Map<String,dynamic>? data}) async {final r=data==null?await dio!.get(path):await dio!.post(path,data:data,options:Options(contentType:Headers.jsonContentType));final b=r.data;if(b is Map&&b['success']==false)throw Exception(b['error']??'Request failed');return b is Map&&b.containsKey('data')?b['data']:b;}
+ static const String _hostedApiBaseUrl = 'https://career-lens-ai-gilt.vercel.app';
+
+  @override
+  void initState() {
+    super.initState();
+    _connectToHostedService();
+  }
+
+  @override
+  void dispose() {
+    chat.dispose();
+    for (final map in forms.values) {
+      for (final controller in map.values) {
+        controller.dispose();
+      }
+    }
+    super.dispose();
+  }
+
+  Future<void> _connectToHostedService({bool announce = false}) async {
+    if (!mounted) return;
+    setState(() {
+      connecting = true;
+      serviceConnected = false;
+      error = null;
+    });
+
+    final candidate = Dio(
+      BaseOptions(
+        baseUrl: _hostedApiBaseUrl,
+        connectTimeout: const Duration(seconds: 40),
+        receiveTimeout: const Duration(seconds: 180),
+        sendTimeout: const Duration(seconds: 90),
+        headers: const {'Accept': 'application/json'},
+      ),
+    );
+    configureSession(candidate);
+
+    try {
+      final response = await candidate.get('/health');
+      final body = response.data;
+      if (response.statusCode != 200 ||
+          body is! Map ||
+          body['status'] != 'healthy') {
+        throw const FormatException('Service health check failed');
+      }
+      if (!mounted) return;
+      setState(() {
+        dio = candidate;
+        serviceConnected = true;
+        error = null;
+      });
+      if (announce) toast('CareerLens is connected and ready.');
+      await _loadStats();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        dio = null;
+        serviceConnected = false;
+      });
+      if (announce) {
+        toast('CareerLens is temporarily unavailable. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => connecting = false);
+    }
+  }
+
+  Future<dynamic> call(String path,{Map<String,dynamic>? data}) async {final r=data==null?await dio!.get(path):await dio!.post(path,data:data,options:Options(contentType:Headers.jsonContentType));final b=r.data;if(b is Map&&b['success']==false)throw Exception(b['error']??'Request failed');return b is Map&&b.containsKey('data')?b['data']:b;}
  Future<dynamic> deleteApi(String path) async {final r=await dio!.delete(path);final b=r.data;if(b is Map&&b['success']==false)throw Exception(b['error']??'Request failed');return b is Map&&b.containsKey('data')?b['data']:b;}
  Future<void> copyText(String value) async {await Clipboard.setData(ClipboardData(text:value));toast('Copied to clipboard.');}
  Future<void> saveCurrentJob(Tool t,dynamic result) async {final c=ctrls(t.id,t.fields);final jdText=c['job_description']?.text.trim()??'';if(jdText.isEmpty){toast('Enter a job description first.');return;}try{await call('/api/jobs/save',data:{'job_title':c['job_title']?.text.trim().isNotEmpty==true?c['job_title']!.text.trim():'Unknown Role','company_name':c['company_name']?.text.trim()??'','job_description':jdText,'ats_score':result is Map?result['ats_score']:null});await loadJobs();toast('Job saved.');}catch(e){showError(e);}}
@@ -64,8 +126,45 @@ class _ShellState extends State<Shell> {
     d['user_name']='Applicant';
   setState(()=>busy=true);try{final out=await call(t.endpoint,data:d);setState(()=>outputs[t.id]=out);}catch(e){showError(e);}finally{if(mounted)setState(()=>busy=false);}
  }
- void showError(Object e){final m=e is DioException?((e.response?.data is Map?(e.response!.data as Map)['error']:null)?.toString()??e.message??'Connection failed'):e.toString().replaceFirst('Exception: ','');setState(()=>error=m);toast(m);}
- Future<void> upload() async {
+ String _friendlyError(Object exception) {
+    if (exception is DioException) {
+      final status = exception.response?.statusCode;
+      if (exception.type == DioExceptionType.connectionTimeout ||
+          exception.type == DioExceptionType.connectionError ||
+          exception.type == DioExceptionType.receiveTimeout ||
+          exception.type == DioExceptionType.sendTimeout) {
+        return 'This request is taking longer than expected. Your information is still here—please try again.';
+      }
+      final body = exception.response?.data;
+      if (status == 400 || status == 422) {
+        if (body is Map && body['error'] is String) {
+          return body['error'] as String;
+        }
+        return 'Please check the information and try again.';
+      }
+      if (status != null && status >= 500) {
+        return 'We could not complete this request right now. Please try again in a moment.';
+      }
+      return 'CareerLens could not complete this request. Please try again.';
+    }
+    final raw = exception.toString().replaceFirst('Exception: ', '').trim();
+    if (raw.isEmpty ||
+        raw.contains('SocketException') ||
+        raw.contains('HandshakeException') ||
+        raw.contains('DioException')) {
+      return 'CareerLens could not reach the service. Please try again in a moment.';
+    }
+    return raw;
+  }
+
+  void showError(Object exception) {
+    final message = _friendlyError(exception);
+    if (!mounted) return;
+    setState(() => error = message);
+    toast(message);
+  }
+
+  Future<void> upload() async {
   setState(() => busy = true);
   try {
     final file = await FilePicker.pickFile(
@@ -501,38 +600,99 @@ class _ShellState extends State<Shell> {
   if(error!=null)_error(error!)
  ]));
  Widget _settings({bool first = false}) => _wrap(
-    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(first ? 'Connect CareerLens AI' : 'Settings', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-      const SizedBox(height: 7),
-      const Text('Enter the real URL of your running Flask API backend.', style: TextStyle(fontSize: 12, color: muted)),
-      const SizedBox(height: 18),
-      Card(child: Padding(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Backend connection', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-        const SizedBox(height: 8),
-        const Text('This must be the URL that serves /api/* routes, not a GitHub repository or static frontend URL.', style: TextStyle(fontSize: 11, color: muted, height: 1.5)),
-        const SizedBox(height: 17),
-        const Text('API base URL', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11)),
-        const SizedBox(height: 7),
-        TextField(controller: base, keyboardType: TextInputType.url, decoration: const InputDecoration(hintText: 'https://your-backend.example.com')),
-        const SizedBox(height: 13),
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          FilledButton.icon(onPressed: () => connect(base.text), icon: const Icon(Icons.link), label: const Text('Connect and save')),
-          OutlinedButton(onPressed: () => setState(() => base.text = 'http://127.0.0.1:5000'), child: const Text('Desktop local')),
-          OutlinedButton(onPressed: () => setState(() => base.text = 'http://10.0.2.2:5000'), child: const Text('Android emulator')),
-        ]),
-      ]))),
-      const SizedBox(height: 15),
-      Card(child: Padding(padding: const EdgeInsets.all(18), child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Connection notes', style: TextStyle(fontWeight: FontWeight.w800)),
-        SizedBox(height: 9),
-        Text('Desktop local: http://127.0.0.1:5000', style: TextStyle(fontSize: 11, color: muted)),
-        Text('Android emulator: http://10.0.2.2:5000', style: TextStyle(fontSize: 11, color: muted)),
-        Text('Physical phone: use the computer LAN IP and same Wi-Fi.', style: TextStyle(fontSize: 11, color: muted)),
-        Text('Hosted app: enter the deployed Flask backend HTTPS URL. Browser builds need backend CORS configured for their origin.', style: TextStyle(fontSize: 11, color: muted)),
-      ]))),
-      if (error != null) _error(error!),
-    ]),
-  );
-  
- Widget _error(String s)=>Container(width:double.infinity,margin:const EdgeInsets.only(top:12),padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:const Color(0xFFFFF1F0),borderRadius:BorderRadius.circular(12),border:Border.all(color:const Color(0xFFF1C5C1))),child:Text(s,style:const TextStyle(color:Color(0xFF9D2922),fontSize:12)));
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              first ? 'Connecting CareerLens AI' : 'Settings',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 7),
+            const Text(
+              'Your career tools run through the secure CareerLens service.',
+              style: TextStyle(fontSize: 12, color: muted),
+            ),
+            const SizedBox(height: 18),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(22),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: serviceConnected
+                            ? const Color(0xFFE5F7EC)
+                            : const Color(0xFFEFEDFF),
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                      child: Icon(
+                        serviceConnected
+                            ? Icons.check_circle_outline
+                            : Icons.cloud_outlined,
+                        color: serviceConnected
+                            ? const Color(0xFF18864B)
+                            : purple,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            connecting
+                                ? 'Connecting…'
+                                : serviceConnected
+                                    ? 'Connected and ready'
+                                    : 'Service temporarily unavailable',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            connecting
+                                ? 'Checking the connection securely.'
+                                : serviceConnected
+                                    ? 'Resume analysis, cover letters, interview preparation and other tools are ready to use.'
+                                    : 'Please check your internet connection and try again. No technical setup is needed.',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: muted,
+                              height: 1.55,
+                            ),
+                          ),
+                          if (!serviceConnected && !connecting) ...[
+                            const SizedBox(height: 14),
+                            FilledButton.icon(
+                              onPressed: _connectToHostedService,
+                              icon: const Icon(Icons.refresh, size: 18),
+                              label: const Text('Try again'),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (connecting)
+                      const Padding(
+                        padding: EdgeInsets.only(left: 10, top: 5),
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _error(String s)=>Container(width:double.infinity,margin:const EdgeInsets.only(top:12),padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:const Color(0xFFFFF1F0),borderRadius:BorderRadius.circular(12),border:Border.all(color:const Color(0xFFF1C5C1))),child:Text(s,style:const TextStyle(color:Color(0xFF9D2922),fontSize:12)));
 }
