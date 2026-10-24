@@ -221,7 +221,7 @@ Map<String, dynamic> generateLocalTool(String toolId, Map<String, dynamic> data)
     if (target.isEmpty) throw Exception('Enter your target role.');
     final skills = _localRoleSkills(target);
     final gaps = skills.where((skill) => !resumeSkills.contains(skill)).toList();
-    final plan = (gaps + skills.where(resumeSkills.contains)).take(8).toList();
+    final plan = (gaps + skills.where(resumeSkills.contains).toList()).take(8).toList();
     List<String> phase(int start, int end) => plan.skip(start).take(end - start).toList();
     final project = target.toLowerCase().contains('data')
         ? 'Analyse a public dataset, explain findings with charts and document limitations.'
