@@ -20,11 +20,11 @@ class WatsonxClient:
     """
 
     def __init__(self):
-        self.api_key = os.getenv("IBM_API_KEY")
-        self.project_id = os.getenv("IBM_PROJECT_ID")
-        self.region = os.getenv("IBM_REGION", "us-south")
-        self.model_primary = os.getenv("GRANITE_MODEL_PRIMARY", "ibm/granite-3-8b-instruct")
-        self.model_fast = os.getenv("GRANITE_MODEL_FAST", "ibm/granite-3-2b-instruct")
+        self.api_key = os.getenv("IBM_API_KEY") or os.getenv("API_KEY")
+        self.project_id = os.getenv("IBM_PROJECT_ID") or os.getenv("PROJECT_ID")
+        self.region = os.getenv("IBM_REGION") or os.getenv("REGION", "us-south")
+        self.model_primary = os.getenv("GRANITE_MODEL_PRIMARY", "ibm/granite-4-h-small")
+        self.model_fast = os.getenv("GRANITE_MODEL_FAST", "ibm/granite-4-h-small")
         self._client = None
         self._initialized = False
         self._init_client()
@@ -50,6 +50,10 @@ class WatsonxClient:
         except ImportError as e:
             logger.error(f"ibm-watsonx-ai SDK not installed: {e}")
             self._initialized = False
+
+    def is_configured(self) -> bool:
+        """Return true only when the SDK and server-side IBM credentials are present."""
+        return bool(self._initialized and self.api_key and self.project_id)
 
     def _get_model(self, use_fast: bool = False):
         """Create a ModelInference instance for the selected model."""
@@ -103,8 +107,8 @@ class WatsonxClient:
             return result.strip() if result else ""
 
         except Exception as e:
-            logger.error(f"watsonx.ai generation error: {e}")
-            return self._mock_response(prompt, expect_json)
+            logger.exception("watsonx.ai generation request failed")
+            raise RuntimeError("watsonx.ai generation request failed") from e
 
     def generate_json(self, prompt: str, max_new_tokens: int = 2048) -> dict:
         """
