@@ -99,6 +99,8 @@ jobs:
       - name: Install Python backend test dependencies
         run: |
           python -m pip install flask flask-cors flask-sqlalchemy SQLAlchemy python-dotenv PyPDF2 pdfminer.six python-docx requests bleach
+      - name: Test deterministic no-AI generators
+        run: python scripts/test_local_generators.py
       - name: Test AI demo-mode responses
         run: python scripts/test_mock_responses.py
       - name: Start backend for local smoke tests
