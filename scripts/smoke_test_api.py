@@ -95,7 +95,12 @@ to learn, communicate clearly and deliver reliable software features."""
 
 
 def test_health():
-    data = json_request("/health")
+    status, headers, raw = request("/health")
+    assert status == 200, f"GET /health returned HTTP {status}"
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise AssertionError("GET /health did not return JSON") from exc
     assert data.get("status") == "healthy", f"service health isn't healthy: {data}"
 
 
