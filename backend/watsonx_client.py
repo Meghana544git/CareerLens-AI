@@ -193,6 +193,31 @@ class WatsonxClient:
                 "overall_verdict": "Good Match — Minor tweaks recommended."
             })
 
+        if "improved_bullets" in prompt_lower or "rewrite weak bullet points" in prompt_lower:
+            return json.dumps({
+                "improved_bullets": [
+                    {
+                        "original": "Built a machine learning model",
+                        "improved": "Developed a machine-learning model in Python and documented the evaluation workflow.",
+                        "improvement_reason": "Uses a specific action verb and names the technology and deliverable."
+                    },
+                    {
+                        "original": "Created a Python web application",
+                        "improved": "Built a Python web application with clearly defined routes and input validation.",
+                        "improvement_reason": "Adds concrete implementation details without inventing numerical results."
+                    }
+                ],
+                "general_tips": [
+                    "Add measurable results only when you can verify them.",
+                    "Start each bullet with a precise action verb.",
+                    "Explain the technology used and the outcome delivered."
+                ],
+                "professional_english_phrases": {
+                    "instead_of": "Worked on a project",
+                    "use": "Developed and delivered a project"
+                }
+            })
+
         if "cover_letter" in prompt_lower or "cover letter" in prompt_lower:
             return """Dear Hiring Manager,
 
