@@ -1,0 +1,17 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+coverage/
+.idea/
+*.iml
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
