@@ -43,6 +43,9 @@ jobs:
               text = re.sub(r'compileSdkVersion\s+\d+', 'compileSdkVersion 36', text)
               text = re.sub(r'compileSdk\s*=\s*flutter\.compileSdkVersion', 'compileSdk = 36', text)
               text = re.sub(r'compileSdk\s*=\s*\d+', 'compileSdk = 36', text)
+              text = re.sub(r'targetSdkVersion\s+(?:flutter\.targetSdkVersion|\d+)', 'targetSdkVersion 36', text)
+              text = re.sub(r'targetSdk\s*=\s*flutter\.targetSdkVersion', 'targetSdk = 36', text)
+              text = re.sub(r'targetSdk\s*=\s*\d+', 'targetSdk = 36', text)
               if text != original:
                   path.write_text(text)
                   print(f"Updated {path} to SDK 36")
