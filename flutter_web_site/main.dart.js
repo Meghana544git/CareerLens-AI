@@ -45960,7 +45960,10 @@ o.push(B.ia(B.dC(B.b([s,B.ia(r.w==null?r.Tg(!0):r.a8p(),1)],p),A.aL,A.ac,A.al),1
 p=B.fe(o,A.aL,A.ac,A.al,0)
 if(q)o=null
 else{o=r.ax
-o=o<4?o:0
+if(o===0)o=0
+else if(o===1)o=1
+else if(o===2)o=2
+else o=o===12?3:0
 o=new B.Mw(o,A.axd,new B.asM(r),null)}return new B.BX(p,o,null)},
 hy(a){var s=this
 s.aa(new B.asU(s,a))
@@ -46284,7 +46287,7 @@ B.asP.prototype={
 $1(a){var s,r=B.b(a.split("|"),t.s),q=A.n.cP(r[0]),p=r.length,o=p>1?A.n.cP(r[1]):""
 p=p>2?A.n.cP(A.m.b0(A.m.fK(r,2),"|")):a
 s=t.N
-return B.ai(["job_title",q,"company_name",o,"job_description",p],s,s)},
+return B.ai(["title",q,"company",o,"description",p],s,s)},
 $S:557}
 B.asQ.prototype={
 $0(){return this.a.Q=!0},
