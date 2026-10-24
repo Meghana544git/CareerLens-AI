@@ -70,10 +70,12 @@ jobs:
       - name: Analyze Flutter source
         run: flutter analyze --no-fatal-infos
       - name: Build Android APK
+        if: github.event_name == 'workflow_dispatch'
         run: flutter build apk --debug
       - name: Build Flutter Web
         run: flutter build web
       - name: Build Android App Bundle
+        if: github.event_name == 'workflow_dispatch'
         run: flutter build appbundle --release
       - name: Prepare static Flutter web site
         run: |
@@ -92,11 +94,13 @@ jobs:
             echo "Platform runners already committed."
           fi
       - name: Upload Android debug APK
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: careerlens-ai-android-debug
           path: build/app/outputs/flutter-apk/app-debug.apk
       - name: Upload Android App Bundle
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: careerlens-ai-android-appbundle
