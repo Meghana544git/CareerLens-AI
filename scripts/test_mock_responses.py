@@ -2,6 +2,11 @@
 """Unit checks for CareerLens mock-mode AI responses."""
 
 import json
+import sys
+from pathlib import Path
+
+# Make the repository root importable when this script is invoked by file path.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from backend.watsonx_client import WatsonxClient
 
