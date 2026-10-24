@@ -49,32 +49,100 @@ def detect_language(text: str) -> str:
 def analyze_resume_vs_jd(
     resume_text: str, job_description: str, user_name: str = "Applicant"
 ) -> Dict[str, Any]:
-    """Run a deterministic, local ATS comparison without an AI/API call."""
+    """Use watsonx when configured; otherwise return reliable local analysis."""
     if not str(resume_text or "").strip():
         return {"ats_score": 0, "error": "Please upload or paste your resume first."}
     if not str(job_description or "").strip():
         return {"ats_score": 0, "error": "Job description is required."}
+    client = get_watsonx_client()
+    language = detect_language(resume_text + job_description)
+    if client.is_configured():
+        try:
+            prompt = get_ats_analysis_prompt(resume_text, job_description, language)
+            ai_result = client.generate_json(prompt, max_new_tokens=2048)
+            result = calculate_ats_score(resume_text, job_description, ai_result)
+            result["language"] = language
+            return enrich_ats_result(resume_text, job_description, result)
+        except Exception:
+            logger.exception("watsonx ATS analysis failed; using local fallback")
     result = calculate_ats_score(resume_text, job_description)
     return enrich_ats_result(resume_text, job_description, result)
 
 def generate_cover_letter(
     resume_text: str, job_description: str, user_name: str = "Applicant"
 ) -> Dict[str, Any]:
-    """Create a cover letter using local templates and supplied text only."""
+    """Generate a tailored letter with Granite, falling back to local templates."""
+    client = get_watsonx_client()
+    language = detect_language(resume_text + " " + job_description)
+    if client.is_configured():
+        try:
+            prompt = get_cover_letter_prompt(resume_text, job_description, user_name, language)
+            letter = client.generate(prompt, max_new_tokens=800, temperature=0.5)
+            if letter.strip():
+                return {"cover_letter": letter, "word_count": len(letter.split()), "language": language}
+        except Exception:
+            logger.exception("watsonx cover-letter generation failed; using local fallback")
     return local_generate_cover_letter(resume_text, job_description, user_name)
 
 def generate_interview_questions(
     job_description: str, resume_text: str = ""
 ) -> Dict[str, Any]:
-    """Create role-specific interview practice questions without AI."""
+    """Create interview preparation with Granite when configured."""
+    client = get_watsonx_client()
+    language = detect_language(job_description + " " + resume_text)
+    if client.is_configured():
+        try:
+            prompt = get_interview_questions_prompt(job_description, resume_text, language)
+            result = client.generate_json(prompt, max_new_tokens=2048)
+            return {
+                "behavioral_questions": result.get("behavioral_questions", []),
+                "technical_questions": result.get("technical_questions", []),
+                "situational_questions": result.get("situational_questions", []),
+                "questions_to_ask_interviewer": result.get("questions_to_ask_interviewer", []),
+                "preparation_checklist": result.get("preparation_checklist", []),
+                "language": language,
+            }
+        except Exception:
+            logger.exception("watsonx interview generation failed; using local fallback")
     return local_generate_interview_questions(job_description, resume_text)
 
 def analyze_skill_gaps(resume_text: str, job_description: str) -> Dict[str, Any]:
-    """Compare detected resume skills to job requirements using local rules."""
+    """Use Granite for skill-gap analysis when credentials are configured."""
+    client = get_watsonx_client()
+    language = detect_language(resume_text + " " + job_description)
+    if client.is_configured():
+        try:
+            prompt = get_skill_gap_prompt(resume_text, job_description, language)
+            result = client.generate_json(prompt, max_new_tokens=2048)
+            local = local_analyze_skill_gaps(resume_text, job_description)
+            for key in ("critical_gaps", "nice_to_have_gaps", "learning_roadmap", "quick_wins", "career_advice"):
+                if key in result and result[key]:
+                    local[key] = result[key]
+            local["language"] = language
+            local["generation_mode"] = "ibm_watsonx"
+            return local
+        except Exception:
+            logger.exception("watsonx skill-gap analysis failed; using local fallback")
     return local_analyze_skill_gaps(resume_text, job_description)
 
 def generate_career_roadmap(resume_text: str, target_role: str) -> Dict[str, Any]:
-    """Create an editable 12-week roadmap using role-specific skill profiles."""
+    """Generate a personalized roadmap with Granite when credentials are configured."""
+    client = get_watsonx_client()
+    language = detect_language(resume_text)
+    if client.is_configured():
+        try:
+            prompt = get_career_roadmap_prompt(resume_text, target_role, language)
+            result = client.generate_json(prompt, max_new_tokens=2048)
+            fallback = local_generate_career_roadmap(resume_text, target_role)
+            for key in ("current_level", "target_level", "estimated_timeline", "roadmap_phases",
+                        "internship_opportunities", "networking_strategy", "salary_range", "motivational_note"):
+                if key in result and result[key]:
+                    fallback[key] = result[key]
+            fallback["language"] = language
+            fallback["generation_mode"] = "ibm_watsonx"
+            return fallback
+        except Exception:
+            logger.exception("watsonx roadmap generation failed; using local fallback")
     return local_generate_career_roadmap(resume_text, target_role)
 
 def analyze_internship_fit(resume_text: str, internship_description: str) -> Dict[str, Any]:
@@ -140,10 +208,44 @@ def analyze_internship_fit(resume_text: str, internship_description: str) -> Dic
 def chat_with_agent(
     user_message: str, session_context: str = "", resume_text: str = ""
 ) -> Dict[str, Any]:
-    """Return practical career guidance locally, without a model/API call."""
+    """Use Granite for chat when configured; otherwise provide local guidance."""
+    client = get_watsonx_client()
+    language = detect_language(user_message)
+    if client.is_configured():
+        try:
+            context_parts = []
+            if session_context:
+                context_parts.append(session_context)
+            if resume_text:
+                context_parts.append("User resume summary (first 500 chars): " + resume_text[:500])
+            prompt = get_chat_prompt(user_message, " | ".join(context_parts), language)
+            return {"response": client.generate(prompt, max_new_tokens=1024, temperature=0.4), "language": language, "generation_mode": "ibm_watsonx"}
+        except Exception:
+            logger.exception("watsonx chat failed; using local fallback")
     return local_chat_with_agent(user_message, session_context, resume_text)
 
 def improve_resume_bullets(resume_text: str, job_description: str = "") -> Dict[str, Any]:
-    """Improve wording while preserving supplied facts and avoiding invented metrics."""
+    """Improve bullets with Granite when configured, preserving a local fallback."""
+    client = get_watsonx_client()
+    if client.is_configured():
+        try:
+            prompt = f"""You are CareerLens AI, an expert resume coach.
+Rewrite the supplied resume bullets using strong action verbs. Preserve facts and do not invent metrics.
+Resume:
+{resume_text}
+Job description context:
+{job_description[:500] if job_description else "Not supplied"}
+Return only valid JSON with improved_bullets (original, improved, improvement_reason), general_tips, and professional_english_phrases.
+"""
+            result = client.generate_json(prompt, max_new_tokens=1500)
+            if result.get("improved_bullets"):
+                return {
+                    "improved_bullets": result.get("improved_bullets", []),
+                    "general_tips": result.get("general_tips", []),
+                    "professional_english_phrases": result.get("professional_english_phrases", {}),
+                    "generation_mode": "ibm_watsonx",
+                }
+        except Exception:
+            logger.exception("watsonx resume rewrite failed; using local fallback")
     return local_improve_resume_bullets(resume_text, job_description)
 
