@@ -119,13 +119,48 @@ class _ShellState extends State<Shell> {
  Map<String,TextEditingController> ctrls(String id,List<Field> fields)=>forms.putIfAbsent(id,()=>{for(final f in fields) f.key:TextEditingController(text:f.key=='resume_text'?(resumeText??''):'')});
  String pretty(dynamic v)=>const JsonEncoder.withIndent('  ').convert(v);
  void toast(String s)=>ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s),behavior:SnackBarBehavior.floating));
- Future<void> runTool(Tool t) async {
-  if(dio==null)return; final c=ctrls(t.id,t.fields); final d=<String,dynamic>{};
-  for(final f in t.fields){var v=c[f.key]!.text.trim();if(f.key=='resume_text'&&v.isEmpty)v=resumeText??'';if(f.required&&v.isEmpty){toast('Please fill '+f.label);return;}if(v.isNotEmpty)d[f.key]=v;}
-  if(t.id=='ats'&&(d['user_name']==null||d['user_name']==''))
-    d['user_name']='Applicant';
-  setState(()=>busy=true);try{final out=await call(t.endpoint,data:d);setState(()=>outputs[t.id]=out);}catch(e){showError(e);}finally{if(mounted)setState(()=>busy=false);}
- }
+ Future<void> runTool(Tool tool) async {
+    final client = dio;
+    if (client == null) {
+      showError(Exception('CareerLens is not connected. Please try again.'));
+      return;
+    }
+    final controllers = ctrls(tool.id, tool.fields);
+    final payload = <String, dynamic>{};
+
+    for (final field in tool.fields) {
+      var value = controllers[field.key]!.text.trim();
+      if (field.key == 'resume_text' && value.isEmpty) {
+        value = resumeText ?? '';
+      }
+      if (field.required && value.isEmpty) {
+        toast('Please fill ' + field.label.toLowerCase() + '.');
+        return;
+      }
+      if (value.isNotEmpty) payload[field.key] = value;
+    }
+    if (tool.id == 'ats' &&
+        (payload['user_name'] == null || payload['user_name'] == '')) {
+      payload['user_name'] = 'Applicant';
+    }
+
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final result = await call(tool.endpoint, data: payload);
+      if (!mounted) return;
+      setState(() {
+        outputs[tool.id] = result;
+        error = null;
+      });
+    } catch (exception) {
+      showError(exception);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
  String _friendlyError(Object exception) {
     if (exception is DioException) {
       final status = exception.response?.statusCode;
@@ -148,11 +183,25 @@ class _ShellState extends State<Shell> {
       return 'CareerLens could not complete this request. Please try again.';
     }
     final raw = exception.toString().replaceFirst('Exception: ', '').trim();
+    const technicalMarkers = [
+      'SocketException',
+      'HandshakeException',
+      'DioException',
+      'FormatException',
+      'TypeError',
+      'StackTrace',
+      'Traceback',
+      'Internal Server Error',
+      'Bad Gateway',
+      'not a subtype of',
+      'Null check operator',
+    ];
     if (raw.isEmpty ||
-        raw.contains('SocketException') ||
-        raw.contains('HandshakeException') ||
-        raw.contains('DioException')) {
-      return 'CareerLens could not reach the service. Please try again in a moment.';
+        technicalMarkers.any((marker) => raw.contains(marker))) {
+      return 'CareerLens could not complete this request. Please try again in a moment.';
+    }
+    if (raw.length > 180) {
+      return 'CareerLens could not complete this request. Please try again in a moment.';
     }
     return raw;
   }
@@ -165,7 +214,14 @@ class _ShellState extends State<Shell> {
   }
 
   Future<void> upload() async {
-  setState(() => busy = true);
+  if (dio == null) {
+    showError(Exception('CareerLens is not connected. Please try again.'));
+    return;
+  }
+  setState(() {
+    busy = true;
+    error = null;
+  });
   try {
     final file = await FilePicker.pickFile(
       type: FileType.custom,
@@ -194,7 +250,44 @@ class _ShellState extends State<Shell> {
     if (mounted) setState(() => busy = false);
   }
 }
-  Future<void> sendChat() async {final text=chat.text.trim();if(text.isEmpty)return;setState(() { messages.add({'role':'user','text':text}); chat.clear(); busy = true; });try{final out=await call('/api/chat',data:{'message':text,'resume_text':resumeText??''});String reply=out is Map?(out['response']??out['answer']??out['message']??out['text']??out['content']??pretty(out)).toString():out.toString();setState(()=>messages.add({'role':'assistant','text':reply}));}catch(e){showError(e);}finally{if(mounted)setState(()=>busy=false);}}
+  Future<void> sendChat() async {
+    final message = chat.text.trim();
+    if (message.isEmpty || busy) return;
+    if (dio == null) {
+      showError(Exception('CareerLens is not connected. Please try again.'));
+      return;
+    }
+    setState(() {
+      messages.add({'role': 'user', 'text': message});
+      chat.clear();
+      busy = true;
+      error = null;
+    });
+    try {
+      final result = await call('/api/chat', data: {
+        'message': message,
+        'resume_text': resumeText ?? '',
+      });
+      final reply = result is Map
+          ? (result['response'] ??
+                  result['answer'] ??
+                  result['message'] ??
+                  result['text'] ??
+                  result['content'] ??
+                  pretty(result))
+              .toString()
+          : result.toString();
+      if (!mounted) return;
+      setState(() {
+        messages.add({'role': 'assistant', 'text': reply});
+        error = null;
+      });
+    } catch (exception) {
+      showError(exception);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
  Future<void> loadJobs() async {try{final x=await call('/api/jobs/saved');setState(()=>savedJobs=x is List?x:[]);}catch(e){showError(e);}}
  Future<void> _loadStats() async {try{final x=await call('/api/session/stats');if(mounted)setState(()=>dashboardStats=x);}catch(_){}}
  Future<void> _loadChatHistory() async {if(historyLoaded||dio==null)return;try{final x=await call('/api/chat/history');if(x is List&&mounted){setState(()=>messages.addAll(x.whereType<Map>().map((m)=>{'role':(m['role']??'assistant').toString(),'text':(m['content']??'').toString()})));}}catch(_){}finally{historyLoaded=true;}}
