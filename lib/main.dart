@@ -318,7 +318,15 @@ class _ShellState extends State<Shell> {
   void toast(String s) => ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(s), behavior: SnackBarBehavior.floating));
   Future<void> runTool(Tool tool) async {
-    const localToolIds = <String>{'ats', 'cover', 'interview', 'skills', 'roadmap', 'internship', 'improve'};
+    const localToolIds = <String>{
+      'ats',
+      'cover',
+      'interview',
+      'skills',
+      'roadmap',
+      'internship',
+      'improve'
+    };
     final useLocalGenerator = localToolIds.contains(tool.id);
     if (!useLocalGenerator && dio == null) {
       showError(Exception('CareerLens is not connected. Please try again.'));
