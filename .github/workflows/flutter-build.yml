@@ -133,6 +133,26 @@ jobs:
         run: flutter build apk --debug
       - name: Build Flutter Web
         run: flutter build web
+      - name: Disable stale Flutter service-worker caching
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          path = Path("build/web/flutter_bootstrap.js")
+          source = path.read_text()
+          source, count = re.subn(
+              r'serviceWorkerSettings:\s*\{\s*serviceWorkerVersion:\s*"[^"]+"[^}]*\}',
+              'serviceWorkerSettings: null',
+              source,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit("Could not disable Flutter service-worker registration")
+          path.write_text(source)
+          print("Disabled Flutter service-worker registration.")
+          PY
       - name: Build Android App Bundle
         if: github.event_name == 'workflow_dispatch'
         run: flutter build appbundle --release
