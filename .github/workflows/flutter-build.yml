@@ -1,0 +1,192 @@
+# Validates the Dart client and generates committed Android, web, and Windows runner projects.
+name: Flutter build and platform scaffolding
+on:
+  push:
+    branches: [flutter-app]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: flutter-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: flutter-app
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate Flutter platform projects
+        run: flutter create --project-name career_lens_ai --org com.meghanayara --platforms android,web,windows .
+      - name: Set CareerLens web branding
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          index = Path("web/index.html")
+          if index.exists():
+              text = index.read_text()
+              text = text.replace('<meta name="description" content="A new Flutter project.">', '<meta name="description" content="CareerLens AI helps students and job seekers improve resumes, prepare for interviews, analyze skill gaps and plan their careers.">')
+              text = text.replace('<meta name="apple-mobile-web-app-title" content="career_lens_ai">', '<meta name="apple-mobile-web-app-title" content="CareerLens AI">')
+              text = text.replace('<title>career_lens_ai</title>', '<title>CareerLens AI | AI Career Studio</title>')
+              index.write_text(text)
+          manifest = Path("web/manifest.json")
+          if manifest.exists():
+              data = json.loads(manifest.read_text())
+              data["name"] = "CareerLens AI"
+              data["short_name"] = "CareerLens"
+              data["description"] = "Your AI career workspace."
+              manifest.write_text(json.dumps(data, indent=2) + chr(10))
+          PY
+      - name: Set Android compile SDK to 36
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          candidates = [Path("android/app/build.gradle"), Path("android/app/build.gradle.kts")]
+          found = False
+          for path in candidates:
+              if not path.exists():
+                  continue
+              text = path.read_text()
+              original = text
+              text = re.sub(r'compileSdkVersion\s+\d+', 'compileSdkVersion 36', text)
+              text = re.sub(r'compileSdk\s*=\s*flutter\.compileSdkVersion', 'compileSdk = 36', text)
+              text = re.sub(r'compileSdk\s*=\s*\d+', 'compileSdk = 36', text)
+              text = re.sub(r'targetSdkVersion\s+(?:flutter\.targetSdkVersion|\d+)', 'targetSdkVersion 36', text)
+              text = re.sub(r'targetSdk\s*=\s*flutter\.targetSdkVersion', 'targetSdk = 36', text)
+              text = re.sub(r'targetSdk\s*=\s*\d+', 'targetSdk = 36', text)
+              if text != original:
+                  path.write_text(text)
+                  print(f"Updated {path} to SDK 36")
+                  found = True
+              elif re.search(r'compileSdk(?:Version)?\s*=?\s*36', text):
+                  print(f"{path} already targets SDK 36")
+                  found = True
+          if not found:
+              raise SystemExit("Could not find a supported Android compile SDK setting")
+
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          if manifest.exists():
+              text = manifest.read_text()
+              text = re.sub(r'android:label="[^"]+"', 'android:label="CareerLens AI"', text, count=1)
+              manifest.write_text(text)
+              print("Set Android app label to CareerLens AI")
+          PY
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Format Dart source
+        run: dart format lib/main.dart
+      - name: Analyze Flutter source
+        run: flutter analyze --no-fatal-infos
+      - name: Run Flutter tests
+        run: flutter test
+      - name: Set up Python for backend tests
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python backend test dependencies
+        run: |
+          python -m pip install flask flask-cors flask-sqlalchemy SQLAlchemy python-dotenv PyPDF2 pdfminer.six python-docx requests bleach
+      - name: Test deterministic no-AI generators
+        run: python scripts/test_local_generators.py
+      - name: Test AI demo-mode responses
+        run: python scripts/test_mock_responses.py
+      - name: Start backend for local smoke tests
+        env:
+          FLASK_DEBUG: "False"
+          FLASK_SECRET_KEY: careerlens-ci-test-secret
+          DATABASE_URL: sqlite:////tmp/careerlens-ci-test.db
+          PORT: "5000"
+        run: |
+          nohup python app.py >/tmp/careerlens-backend.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:5000/health >/dev/null; then
+              echo "Backend started."
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/careerlens-backend.log
+          exit 1
+      - name: Smoke-test local backend APIs
+        env:
+          CAREERLENS_API_BASE_URL: http://127.0.0.1:5000
+        run: python scripts/smoke_test_api.py
+      - name: Smoke-test production backend before publishing
+        env:
+          CAREERLENS_API_BASE_URL: https://career-lens-ai-gilt.vercel.app
+        run: python scripts/smoke_test_api.py
+      - name: Build Android APK
+        if: github.event_name == 'workflow_dispatch'
+        run: flutter build apk --debug
+      - name: Build Flutter Web
+        run: flutter build web
+      - name: Disable stale Flutter service-worker caching
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          path = Path("build/web/flutter_bootstrap.js")
+          source = path.read_text()
+          source, count = re.subn(
+              r'serviceWorkerSettings:\s*\{\s*serviceWorkerVersion:\s*"[^"]+"[^}]*\}',
+              'serviceWorkerSettings: null',
+              source,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit("Could not disable Flutter service-worker registration")
+          path.write_text(source)
+          print("Disabled Flutter service-worker registration.")
+          PY
+      - name: Build Android App Bundle
+        if: github.event_name == 'workflow_dispatch'
+        run: flutter build appbundle --release
+      - name: Prepare static Flutter web site
+        run: |
+          rm -rf flutter_web_site
+          mkdir -p flutter_web_site
+          cp -a build/web/. flutter_web_site/
+          rm -f flutter_web_site/.last_build_id
+      - name: Commit generated platform folders and static site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/main.dart android web windows flutter_web_site
+          if ! git diff --cached --quiet; then
+            git commit -m "Verified Flutter web build"
+            git push origin flutter-app
+          else
+            echo "Platform runners already committed."
+          fi
+      - name: Upload Android debug APK
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: careerlens-ai-android-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
+      - name: Upload Android App Bundle
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: careerlens-ai-android-appbundle
+          path: build/app/outputs/bundle/release/app-release.aab
+      - name: Upload web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: careerlens-ai-web
+          path: build/web/
