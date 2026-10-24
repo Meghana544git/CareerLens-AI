@@ -41,6 +41,24 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
-  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    // Remove an old Flutter PWA worker/cache before loading the new build.
+    (async function () {
+      try {
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map((registration) => registration.unregister()));
+        }
+        if ('caches' in window) {
+          const names = await caches.keys();
+          await Promise.all(names.filter((name) => /flutter|careerlens/i.test(name)).map((name) => caches.delete(name)));
+        }
+      } catch (_) {}
+      const script = document.createElement('script');
+      script.src = 'flutter_bootstrap.js?v=20261024-local-generators';
+      script.async = true;
+      document.body.appendChild(script);
+    })();
+  </script>
 </body>
 </html>
