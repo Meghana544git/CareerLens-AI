@@ -75,11 +75,16 @@ jobs:
         run: flutter build web
       - name: Build Android App Bundle
         run: flutter build appbundle --release
-      - name: Commit generated platform folders
+      - name: Prepare static Flutter web site
+        run: |
+          rm -rf flutter_web_site
+          mkdir -p flutter_web_site
+          cp -a build/web/. flutter_web_site/
+      - name: Commit generated platform folders and static site
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add android web windows
+          git add android web windows flutter_web_site
           if ! git diff --cached --quiet; then
             git commit -m "Generate Flutter platform runners"
             git push origin flutter-app
