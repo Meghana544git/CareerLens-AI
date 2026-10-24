@@ -63,9 +63,36 @@ class _ShellState extends State<Shell> {
  }
  void showError(Object e){final m=e is DioException?((e.response?.data is Map?(e.response!.data as Map)['error']:null)?.toString()??e.message??'Connection failed'):e.toString().replaceFirst('Exception: ','');setState(()=>error=m);toast(m);}
  Future<void> upload() async {
-  setState(()=>busy=true);try{final picked=await FilePicker.pickFiles(type:FileType.custom,allowedExtensions:['pdf','docx','txt'],withData:true);if(picked==null)return;final f=picked.files.single;if(f.bytes==null)throw Exception('Could not read this file. Choose it again.');final form=FormData.fromMap({'file':MultipartFile.fromBytes(f.bytes!,filename:f.name)});final r=await dio!.post('/api/resume/upload',data:form);final b=r.data;final out=b is Map&&b.containsKey('data')?b['data']:b;if(b is Map&&b['success']==false)throw Exception(b['error']);setState(() { resumeName = f.name; resumeText = (out is Map ? out['preview'] : '')?.toString(); outputs['upload'] = out; });toast('Resume uploaded successfully.');}catch(e){showError(e);}finally{if(mounted)setState(()=>busy=false);}
- }
- Future<void> sendChat() async {final text=chat.text.trim();if(text.isEmpty)return;setState(() { messages.add({'role':'user','text':text}); chat.clear(); busy = true; });try{final out=await call('/api/chat',data:{'message':text,'resume_text':resumeText??''});String reply=out is Map?(out['response']??out['answer']??out['message']??out['text']??out['content']??pretty(out)).toString():out.toString();setState(()=>messages.add({'role':'assistant','text':reply}));}catch(e){showError(e);}finally{if(mounted)setState(()=>busy=false);}}
+  setState(() => busy = true);
+  try {
+    final file = await FilePicker.pickFile(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'docx', 'txt'],
+    );
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    final form = FormData.fromMap({
+      'file': MultipartFile.fromBytes(bytes, filename: file.name),
+    });
+    final response = await dio!.post('/api/resume/upload', data: form);
+    final body = response.data;
+    final out = body is Map && body.containsKey('data') ? body['data'] : body;
+    if (body is Map && body['success'] == false) {
+      throw Exception(body['error']);
+    }
+    setState(() {
+      resumeName = file.name;
+      resumeText = (out is Map ? out['preview'] : '')?.toString();
+      outputs['upload'] = out;
+    });
+    toast('Resume uploaded successfully.');
+  } catch (e) {
+    showError(e);
+  } finally {
+    if (mounted) setState(() => busy = false);
+  }
+}
+  Future<void> sendChat() async {final text=chat.text.trim();if(text.isEmpty)return;setState(() { messages.add({'role':'user','text':text}); chat.clear(); busy = true; });try{final out=await call('/api/chat',data:{'message':text,'resume_text':resumeText??''});String reply=out is Map?(out['response']??out['answer']??out['message']??out['text']??out['content']??pretty(out)).toString():out.toString();setState(()=>messages.add({'role':'assistant','text':reply}));}catch(e){showError(e);}finally{if(mounted)setState(()=>busy=false);}}
  Future<void> loadJobs() async {try{final x=await call('/api/jobs/saved');setState(()=>savedJobs=x is List?x:[]);}catch(e){showError(e);}}
  Future<void> _loadStats() async {try{final x=await call('/api/session/stats');if(mounted)setState(()=>dashboardStats=x);}catch(_){}}
  Future<void> _loadChatHistory() async {if(historyLoaded||dio==null)return;try{final x=await call('/api/chat/history');if(x is List&&mounted){setState(()=>messages.addAll(x.whereType<Map>().map((m)=>{'role':(m['role']??'assistant').toString(),'text':(m['content']??'').toString()})));}}catch(_){}finally{historyLoaded=true;}}
