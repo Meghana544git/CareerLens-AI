@@ -18,6 +18,15 @@ from agent_instructions import (
 )
 from backend.watsonx_client import get_watsonx_client
 from backend.ats_analyzer import calculate_ats_score
+from backend.local_generator import (
+    analyze_skill_gaps as local_analyze_skill_gaps,
+    chat_with_agent as local_chat_with_agent,
+    enrich_ats_result,
+    generate_career_roadmap as local_generate_career_roadmap,
+    generate_cover_letter as local_generate_cover_letter,
+    generate_interview_questions as local_generate_interview_questions,
+    improve_resume_bullets as local_improve_resume_bullets,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -40,97 +49,33 @@ def detect_language(text: str) -> str:
 def analyze_resume_vs_jd(
     resume_text: str, job_description: str, user_name: str = "Applicant"
 ) -> Dict[str, Any]:
-    """
-    Full ATS analysis: AI analysis + rule-based scoring blended together.
-    Returns comprehensive match report.
-    """
-    client = get_watsonx_client()
-    language = detect_language(resume_text + job_description)
-
-    prompt = get_ats_analysis_prompt(resume_text, job_description, language)
-    ai_result = client.generate_json(prompt, max_new_tokens=2048)
-
-    # Blend AI result with rule-based scoring
-    final = calculate_ats_score(resume_text, job_description, ai_result)
-    final["language"] = language
-    return final
-
+    """Run a deterministic, local ATS comparison without an AI/API call."""
+    if not str(resume_text or "").strip():
+        return {"ats_score": 0, "error": "Please upload or paste your resume first."}
+    if not str(job_description or "").strip():
+        return {"ats_score": 0, "error": "Job description is required."}
+    result = calculate_ats_score(resume_text, job_description)
+    return enrich_ats_result(resume_text, job_description, result)
 
 def generate_cover_letter(
     resume_text: str, job_description: str, user_name: str = "Applicant"
 ) -> Dict[str, Any]:
-    """Generate a tailored cover letter."""
-    client = get_watsonx_client()
-    language = detect_language(resume_text)
-
-    prompt = get_cover_letter_prompt(resume_text, job_description, user_name, language)
-    cover_letter = client.generate(prompt, max_new_tokens=800, temperature=0.5)
-
-    return {
-        "cover_letter": cover_letter,
-        "word_count": len(cover_letter.split()),
-        "language": language,
-    }
-
+    """Create a cover letter using local templates and supplied text only."""
+    return local_generate_cover_letter(resume_text, job_description, user_name)
 
 def generate_interview_questions(
     job_description: str, resume_text: str = ""
 ) -> Dict[str, Any]:
-    """Generate predicted interview questions with preparation guidance."""
-    client = get_watsonx_client()
-    language = detect_language(job_description)
-
-    prompt = get_interview_questions_prompt(job_description, resume_text, language)
-    result = client.generate_json(prompt, max_new_tokens=2048)
-
-    return {
-        "behavioral_questions": result.get("behavioral_questions", []),
-        "technical_questions": result.get("technical_questions", []),
-        "situational_questions": result.get("situational_questions", []),
-        "questions_to_ask_interviewer": result.get("questions_to_ask_interviewer", []),
-        "preparation_checklist": result.get("preparation_checklist", []),
-        "language": language,
-    }
-
+    """Create role-specific interview practice questions without AI."""
+    return local_generate_interview_questions(job_description, resume_text)
 
 def analyze_skill_gaps(resume_text: str, job_description: str) -> Dict[str, Any]:
-    """Identify skill gaps and generate a learning roadmap with resources."""
-    client = get_watsonx_client()
-    language = detect_language(resume_text)
-
-    prompt = get_skill_gap_prompt(resume_text, job_description, language)
-    result = client.generate_json(prompt, max_new_tokens=2048)
-
-    return {
-        "critical_gaps": result.get("critical_gaps", []),
-        "nice_to_have_gaps": result.get("nice_to_have_gaps", []),
-        "learning_roadmap": result.get("learning_roadmap", []),
-        "quick_wins": result.get("quick_wins", []),
-        "career_advice": result.get("career_advice", ""),
-        "language": language,
-    }
-
+    """Compare detected resume skills to job requirements using local rules."""
+    return local_analyze_skill_gaps(resume_text, job_description)
 
 def generate_career_roadmap(resume_text: str, target_role: str) -> Dict[str, Any]:
-    """Generate a personalized career roadmap toward a target role."""
-    client = get_watsonx_client()
-    language = detect_language(resume_text)
-
-    prompt = get_career_roadmap_prompt(resume_text, target_role, language)
-    result = client.generate_json(prompt, max_new_tokens=2048)
-
-    return {
-        "current_level": result.get("current_level", ""),
-        "target_level": result.get("target_level", ""),
-        "estimated_timeline": result.get("estimated_timeline", ""),
-        "roadmap_phases": result.get("roadmap_phases", []),
-        "internship_opportunities": result.get("internship_opportunities", []),
-        "networking_strategy": result.get("networking_strategy", []),
-        "salary_range": result.get("salary_range", {}),
-        "motivational_note": result.get("motivational_note", ""),
-        "language": language,
-    }
-
+    """Create an editable 12-week roadmap using role-specific skill profiles."""
+    return local_generate_career_roadmap(resume_text, target_role)
 
 def analyze_internship_fit(resume_text: str, internship_description: str) -> Dict[str, Any]:
     """
@@ -195,70 +140,10 @@ def analyze_internship_fit(resume_text: str, internship_description: str) -> Dic
 def chat_with_agent(
     user_message: str, session_context: str = "", resume_text: str = ""
 ) -> Dict[str, Any]:
-    """
-    Main conversational AI endpoint.
-    Handles open-ended career coaching questions.
-    """
-    client = get_watsonx_client()
-    language = detect_language(user_message)
-
-    context_parts = []
-    if session_context:
-        context_parts.append(session_context)
-    if resume_text:
-        # Include a brief resume summary for context
-        context_parts.append(f"User resume summary (first 500 chars): {resume_text[:500]}")
-
-    context = " | ".join(context_parts)
-
-    prompt = get_chat_prompt(user_message, context, language)
-    response = client.generate(prompt, max_new_tokens=1024, temperature=0.4)
-
-    return {
-        "response": response,
-        "language": language,
-    }
-
+    """Return practical career guidance locally, without a model/API call."""
+    return local_chat_with_agent(user_message, session_context, resume_text)
 
 def improve_resume_bullets(resume_text: str, job_description: str = "") -> Dict[str, Any]:
-    """
-    Specifically generate improved bullet point rewrites for the resume.
-    """
-    client = get_watsonx_client()
-
-    prompt = f"""You are CareerLens AI, an expert resume coach.
-
-Analyze this resume and rewrite weak bullet points using the STAR method and strong action verbs.
-Focus on quantification, impact, and relevance.
-
-RESUME:
-{resume_text}
-
-{"JOB DESCRIPTION CONTEXT: " + job_description[:500] if job_description else ""}
-
-Return JSON:
-{{
-  "improved_bullets": [
-    {{
-      "original": "<original bullet or phrase>",
-      "improved": "<rewritten bullet with metrics and action verb>",
-      "improvement_reason": "<why this is better>"
-    }}
-  ],
-  "general_tips": ["<tip 1>", "<tip 2>", "<tip 3>"],
-  "professional_english_phrases": {{
-    "instead_of": "<weak phrase>",
-    "use": "<strong professional phrase>"
-  }}
-}}
-Return ONLY valid JSON."""
-
-    result = client.generate_json(prompt, max_new_tokens=1500)
-
-    return {
-        "improved_bullets": result.get("improved_bullets", []),
-        "general_tips": result.get("general_tips", []),
-        "professional_english_phrases": result.get("professional_english_phrases", {}),
-    }
-
+    """Improve wording while preserving supplied facts and avoiding invented metrics."""
+    return local_improve_resume_bullets(resume_text, job_description)
 
