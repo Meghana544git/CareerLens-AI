@@ -317,6 +317,22 @@ class _ShellState extends State<Shell> {
   String pretty(dynamic v) => const JsonEncoder.withIndent('  ').convert(v);
   void toast(String s) => ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(s), behavior: SnackBarBehavior.floating));
+  Future<dynamic> _generateWithLocalFallback(
+      Tool tool, Map<String, dynamic> payload) async {
+    // Prefer live watsonx-backed generation when the server is healthy.
+    // If it is unreachable or the model is slow, return a local result rather
+    // than displaying the repeated connection-timeout banner.
+    if (dio != null) {
+      try {
+        return await call(tool.endpoint, data: payload)
+            .timeout(const Duration(seconds: 15));
+      } catch (_) {
+        // Silent fallback: no network exception is shown to the user.
+      }
+    }
+    return generateLocalTool(tool.id, payload);
+  }
+
   Future<void> runTool(Tool tool) async {
     const localToolIds = <String>{
       'ats',
@@ -327,8 +343,8 @@ class _ShellState extends State<Shell> {
       'internship',
       'improve'
     };
-    final useLocalGenerator = localToolIds.contains(tool.id);
-    if (!useLocalGenerator && dio == null) {
+    final useGenerator = localToolIds.contains(tool.id);
+    if (!useGenerator && dio == null) {
       showError(Exception('CareerLens is not connected. Please try again.'));
       return;
     }
@@ -356,8 +372,8 @@ class _ShellState extends State<Shell> {
       error = null;
     });
     try {
-      final result = useLocalGenerator
-          ? generateLocalTool(tool.id, payload)
+      final result = useGenerator
+          ? await _generateWithLocalFallback(tool, payload)
           : await call(tool.endpoint, data: payload);
       if (!mounted) return;
       setState(() {
