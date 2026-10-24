@@ -234,11 +234,11 @@ def create_app():
     @app.route("/api/skills/gap", methods=["POST"])
     def skill_gap_analysis():
         data = request.get_json(force=True) or {}
-        job_description = data.get("job_description", "").strip()
-        resume_text = data.get("resume_text") or session.get("resume_text", "")
+        job_description = str(data.get("job_description", "") or "").strip()
+        resume_text = str(data.get("resume_text") or session.get("resume_text", "") or "").strip()
 
-        if not job_description or not resume_text:
-            return api_response(error="Both resume and job description are required", status=400)
+        if not job_description:
+            return api_response(error="Job description is required", status=400)
 
         from backend.career_tools import analyze_skill_gaps
         result = analyze_skill_gaps(resume_text, job_description)
