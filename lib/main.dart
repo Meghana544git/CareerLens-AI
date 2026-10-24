@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 const purple=Color(0xFF6557E8), ink=Color(0xFF252640), muted=Color(0xFF777B91), bg=Color(0xFFF6F7FB);
 void main()=>runApp(const CareerLensApp());
@@ -228,8 +231,262 @@ class _ShellState extends State<Shell> {
  Widget _toolCard(Tool t,int index)=>InkWell(onTap:()=>go(index),borderRadius:BorderRadius.circular(18),child:Card(child:Padding(padding:const EdgeInsets.all(17),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Container(width:39,height:39,decoration:BoxDecoration(color:const Color(0xFFF0EEFF),borderRadius:BorderRadius.circular(12)),child:Icon(t.icon,color:purple)),const Spacer(),Text(t.title,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w800)),const SizedBox(height:5),Text(t.subtitle,style:const TextStyle(fontSize:10,color:muted),maxLines:2,overflow:TextOverflow.ellipsis)]))));
  Widget _quickCard(String title,String subtitle,IconData icon,int index)=>InkWell(onTap:()=>go(index),borderRadius:BorderRadius.circular(18),child:Card(child:Padding(padding:const EdgeInsets.all(17),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(icon,color:purple,size:28),const Spacer(),Text(title,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w800)),const SizedBox(height:5),Text(subtitle,style:const TextStyle(fontSize:10,color:muted))]))));
  Widget _resumePage()=>_wrap(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Your resume',style:TextStyle(fontSize:22,fontWeight:FontWeight.w800)),const SizedBox(height:6),const Text('Upload PDF, DOCX, or TXT to enable career analysis.',style:TextStyle(color:muted,fontSize:12)),const SizedBox(height:18),Card(child:Padding(padding:const EdgeInsets.all(28),child:Column(children:[const Icon(Icons.cloud_upload_outlined,size:50,color:purple),const SizedBox(height:12),Text(resumeName??'Upload your resume',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w800)),const SizedBox(height:7),const Text('PDF, DOCX and TXT supported',style:TextStyle(fontSize:12,color:muted)),const SizedBox(height:18),FilledButton.icon(onPressed:busy?null:upload,icon:const Icon(Icons.file_upload_outlined),label:Text(busy?'Uploading…':'Choose resume')),if(outputs['upload']!=null)...[const SizedBox(height:20),_result(outputs['upload'])]]))),const SizedBox(height:15),const Text('After uploading',style:TextStyle(fontSize:16,fontWeight:FontWeight.w800)),const SizedBox(height:9),for(final e in [('ATS analysis','Match your resume against a job description.',2),('Skill gap analysis','Discover missing requirements.',5),('Resume bullet rewriter','Strengthen your experience bullets.',8)])Card(child:ListTile(leading:const Icon(Icons.check_circle_outline,color:purple),title:Text(e.$1,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w700)),subtitle:Text(e.$2,style:const TextStyle(fontSize:11,color:muted)),trailing:const Icon(Icons.chevron_right),onTap:()=>go(e.$3))),if(error!=null)_error(error!)]));
- Widget _toolPage(Tool t){final c=ctrls(t.id,t.fields);return _wrap(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[Container(width:48,height:48,decoration:BoxDecoration(color:const Color(0xFFEFEDFF),borderRadius:BorderRadius.circular(14)),child:Icon(t.icon,color:purple)),const SizedBox(width:13),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(t.title,style:const TextStyle(fontSize:22,fontWeight:FontWeight.w800)),Text(t.subtitle,style:const TextStyle(fontSize:12,color:muted))]))]),const SizedBox(height:18),Card(child:Padding(padding:const EdgeInsets.all(21),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Add your details',style:TextStyle(fontSize:15,fontWeight:FontWeight.w800)),const SizedBox(height:15),for(final f in t.fields)...[Text(f.label+(f.required?' *':''),style:const TextStyle(fontWeight:FontWeight.w700,fontSize:11)),const SizedBox(height:7),TextField(controller:c[f.key],minLines:f.multi?4:1,maxLines:f.multi?9:1,decoration:InputDecoration(hintText:f.hint,suffixIcon:f.key=='resume_text'&&resumeName!=null?const Icon(Icons.check_circle,color:Colors.green):null)),const SizedBox(height:15)],SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:busy?null:()=>runTool(t),icon:Icon(busy?Icons.hourglass_top:Icons.auto_awesome),label:Text(busy?'Working…':'Generate result')))]))),if(error!=null)_error(error!),if(outputs[t.id]!=null)...[const SizedBox(height:20),Row(children:[const Expanded(child:Text('Your result',style:TextStyle(fontSize:18,fontWeight:FontWeight.w800))),IconButton(tooltip:'Copy result',onPressed:()=>copyText(pretty(outputs[t.id])),icon:const Icon(Icons.copy))]),_result(outputs[t.id]),if(t.id=='ats')Padding(padding:const EdgeInsets.only(top:12),child:OutlinedButton.icon(onPressed:()=>saveCurrentJob(t,outputs[t.id]),icon:const Icon(Icons.bookmark_add_outlined),label:const Text('Save this job')))] ]));}
- Widget _comparePage(){final c=ctrls('compare',[const Field('resume_text','Resume text','',multi:true),const Field('jobs','Jobs','',multi:true)]);return _wrap(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Compare job opportunities',style:TextStyle(fontSize:22,fontWeight:FontWeight.w800)),const SizedBox(height:7),const Text('Compare up to five job descriptions with your resume.',style:TextStyle(color:muted,fontSize:12)),const SizedBox(height:18),Card(child:Padding(padding:const EdgeInsets.all(20),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Resume text',style:TextStyle(fontSize:11,fontWeight:FontWeight.w700)),const SizedBox(height:7),TextField(controller:c['resume_text'],minLines:4,maxLines:8,decoration:const InputDecoration(hintText:'Paste resume, or upload it on My Resume.')),const SizedBox(height:15),const Text('Jobs (one per line)',style:TextStyle(fontSize:11,fontWeight:FontWeight.w700)),const SizedBox(height:5),const Text('Format: Job title | Company | Full job description',style:TextStyle(fontSize:11,color:muted)),const SizedBox(height:7),TextField(controller:c['jobs'],minLines:5,maxLines:12,decoration:const InputDecoration(hintText:'Software Engineer | Company A | Required skills…\nML Intern | Company B | Python and ML…')),const SizedBox(height:16),FilledButton.icon(onPressed:busy?null:compare,icon:const Icon(Icons.compare_arrows),label:Text(busy?'Comparing…':'Compare jobs'))]))),if(outputs['compare']!=null)_result(outputs['compare']),if(error!=null)_error(error!)]));}
+ Widget _toolPage(Tool t) {
+    final c = ctrls(t.id, t.fields);
+    final result = outputs[t.id];
+    return _wrap(
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFEDFF),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(t.icon, color: purple),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(t.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                    Text(t.subtitle, style: const TextStyle(fontSize: 12, color: muted)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(21),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Add your details', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 15),
+                  for (final field in t.fields) ...[
+                    Text(field.label + (field.required ? ' *' : ''), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11)),
+                    const SizedBox(height: 7),
+                    TextField(
+                      controller: c[field.key],
+                      minLines: field.multi ? 4 : 1,
+                      maxLines: field.multi ? 9 : 1,
+                      decoration: InputDecoration(
+                        hintText: field.hint,
+                        suffixIcon: field.key == 'resume_text' && resumeName != null
+                            ? const Icon(Icons.check_circle, color: Colors.green)
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: busy ? null : () => runTool(t),
+                      icon: Icon(busy ? Icons.hourglass_top : Icons.auto_awesome),
+                      label: Text(busy ? 'Working…' : (t.id == 'cover' ? 'Generate cover letter' : 'Generate result')),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (error != null) _error(error!),
+          if (result != null) ...[
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Expanded(child: Text('Your result', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
+                IconButton(
+                  tooltip: t.id == 'cover' ? 'Copy cover letter' : 'Copy result',
+                  onPressed: () => copyText(t.id == 'cover' ? _coverLetterText(result) : _readableText(result)),
+                  icon: const Icon(Icons.copy),
+                ),
+              ],
+            ),
+            _result(result),
+            if (t.id == 'cover') ...[
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: busy ? null : _downloadCoverLetterPdf,
+                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                  label: const Text('Download cover letter as PDF'),
+                ),
+              ),
+            ],
+            if (t.id == 'ats')
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: OutlinedButton.icon(
+                  onPressed: () => saveCurrentJob(t, result),
+                  icon: const Icon(Icons.bookmark_add_outlined),
+                  label: const Text('Save this job'),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _coverLetterText(dynamic data) {
+    if (data is String) {
+      final trimmed = data.trim();
+      try {
+        final decoded = jsonDecode(trimmed);
+        if (decoded is Map || decoded is List) return _coverLetterText(decoded);
+      } catch (_) {}
+      return data;
+    }
+    if (data is Map) {
+      for (final key in ['cover_letter', 'coverLetter', 'letter', 'content', 'text', 'output']) {
+        final value = data[key];
+        if (value is String && value.trim().isNotEmpty) return value.trim();
+      }
+      for (final key in ['data', 'result', 'response']) {
+        if (data[key] is Map || data[key] is String) {
+          final found = _coverLetterText(data[key]);
+          if (found.isNotEmpty) return found;
+        }
+      }
+    }
+    return '';
+  }
+
+  Future<void> _downloadCoverLetterPdf() async {
+    final letter = _coverLetterText(outputs['cover']).trim();
+    if (letter.isEmpty) {
+      toast('Generate the cover letter first.');
+      return;
+    }
+    setState(() => busy = true);
+    try {
+      final pdf = pw.Document();
+      final paragraphs = letter.replaceAll('\r\n', '\n').split(RegExp(r'\n\s*\n'));
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.fromLTRB(58, 58, 58, 58),
+          footer: (context) => pw.Container(
+            alignment: pw.Alignment.centerRight,
+            margin: const pw.EdgeInsets.only(top: 18),
+            child: pw.Text(
+              'CareerLens AI  •  ' + context.pageNumber.toString(),
+              style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+            ),
+          ),
+          build: (context) => [
+            pw.Text(
+              'COVER LETTER',
+              style: pw.TextStyle(
+                fontSize: 9,
+                fontWeight: pw.FontWeight.bold,
+                letterSpacing: 1.5,
+                color: PdfColor.fromInt(0xFF6557E8),
+              ),
+            ),
+            pw.SizedBox(height: 20),
+            for (final paragraph in paragraphs)
+              if (paragraph.trim().isNotEmpty)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 10),
+                  child: pw.Text(
+                    paragraph.trim(),
+                    style: const pw.TextStyle(
+                      fontSize: 11,
+                      lineSpacing: 4,
+                      color: PdfColors.grey800,
+                    ),
+                    textAlign: pw.TextAlign.left,
+                  ),
+                ),
+          ],
+        ),
+      );
+      final bytes = await pdf.save();
+      await Printing.sharePdf(bytes: bytes, filename: 'CareerLens_Cover_Letter.pdf');
+      if (mounted) toast('Your cover letter PDF is ready.');
+    } catch (e) {
+      showError(e);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  String _labelForKey(String key) {
+    return key
+        .replaceAll(RegExp(r'[_-]+'), ' ')
+        .split(' ')
+        .where((part) => part.isNotEmpty)
+        .map((part) => part[0].toUpperCase() + part.substring(1))
+        .join(' ');
+  }
+
+  String _readableText(dynamic data) {
+    if (data is Map) {
+      return data.entries
+          .where((entry) => entry.value != null)
+          .map((entry) => _labelForKey(entry.key.toString()) + '\n' + _readableText(entry.value))
+          .join('\n\n');
+    }
+    if (data is List) {
+      return data.map((item) => '• ' + _readableText(item)).join('\n');
+    }
+    return data?.toString() ?? '';
+  }
+
+  Widget _result(dynamic data) {
+    if (data is Map && data['cover_letter'] != null) {
+      final letter = _coverLetterText(data);
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE4E5EF)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('COVER LETTER', style: TextStyle(fontSize: 10, color: purple, letterSpacing: 1.6, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 18),
+            SelectableText(letter, style: const TextStyle(fontSize: 14, height: 1.8, color: ink)),
+            if (data['word_count'] != null) ...[
+              const SizedBox(height: 20),
+              Text(data['word_count'].toString() + ' words', style: const TextStyle(fontSize: 11, color: muted)),
+            ],
+          ],
+        ),
+      );
+    }
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE4E5EF)),
+      ),
+      child: SelectableText(
+        _readableText(data),
+        style: const TextStyle(fontSize: 12, height: 1.7, color: ink),
+      ),
+    );
+  }
+
+  Widget _comparePage(){final c=ctrls('compare',[const Field('resume_text','Resume text','',multi:true),const Field('jobs','Jobs','',multi:true)]);return _wrap(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Compare job opportunities',style:TextStyle(fontSize:22,fontWeight:FontWeight.w800)),const SizedBox(height:7),const Text('Compare up to five job descriptions with your resume.',style:TextStyle(color:muted,fontSize:12)),const SizedBox(height:18),Card(child:Padding(padding:const EdgeInsets.all(20),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Resume text',style:TextStyle(fontSize:11,fontWeight:FontWeight.w700)),const SizedBox(height:7),TextField(controller:c['resume_text'],minLines:4,maxLines:8,decoration:const InputDecoration(hintText:'Paste resume, or upload it on My Resume.')),const SizedBox(height:15),const Text('Jobs (one per line)',style:TextStyle(fontSize:11,fontWeight:FontWeight.w700)),const SizedBox(height:5),const Text('Format: Job title | Company | Full job description',style:TextStyle(fontSize:11,color:muted)),const SizedBox(height:7),TextField(controller:c['jobs'],minLines:5,maxLines:12,decoration:const InputDecoration(hintText:'Software Engineer | Company A | Required skills…\nML Intern | Company B | Python and ML…')),const SizedBox(height:16),FilledButton.icon(onPressed:busy?null:compare,icon:const Icon(Icons.compare_arrows),label:Text(busy?'Comparing…':'Compare jobs'))]))),if(outputs['compare']!=null)_result(outputs['compare']),if(error!=null)_error(error!)]));}
  Widget _chatPage()=>_wrap(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[const Expanded(child:Text('AI Career Coach',style:TextStyle(fontSize:22,fontWeight:FontWeight.w800))),TextButton.icon(onPressed:_clearChatHistory,icon:const Icon(Icons.delete_outline,size:17),label:const Text('Clear chat'))]),const SizedBox(height:7),const Text('Ask about interviews, applications, learning plans, or career choices. English and Hindi are supported by your backend.',style:TextStyle(color:muted,fontSize:12)),const SizedBox(height:15),Container(height:MediaQuery.sizeOf(context).height*.52,decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18),border:Border.all(color:const Color(0xFFE7E8F0))),child:messages.isEmpty?const Center(child:Column(mainAxisSize:MainAxisSize.min,children:[Icon(Icons.chat_bubble_outline,color:purple,size:40),SizedBox(height:12),Text('What can I help you with?',style:TextStyle(fontWeight:FontWeight.w800)),SizedBox(height:5),Text('Try: Help me prepare for a Java interview.',style:TextStyle(fontSize:11,color:muted))])):ListView(padding:const EdgeInsets.all(14),children:[for(final m in messages)Align(alignment:m['role']=='user'?Alignment.centerRight:Alignment.centerLeft,child:Container(constraints:const BoxConstraints(maxWidth:650),padding:const EdgeInsets.all(13),margin:const EdgeInsets.only(bottom:10),decoration:BoxDecoration(color:m['role']=='user'?const Color(0xFFEFEDFF):bg,borderRadius:BorderRadius.circular(13)),child:SelectableText(m['text']??'',style:const TextStyle(fontSize:12,height:1.5))))])),const SizedBox(height:10),Row(children:[Expanded(child:TextField(controller:chat,minLines:1,maxLines:4,onSubmitted:(_)=>sendChat(),decoration:const InputDecoration(hintText:'Ask your career coach…'))),const SizedBox(width:8),FilledButton(onPressed:busy?null:sendChat,child:const Icon(Icons.send))]),if(error!=null)_error(error!)]));
  Widget _jobsPage()=>_wrap(Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
   Row(children:[const Expanded(child:Text('Saved jobs',style:TextStyle(fontSize:22,fontWeight:FontWeight.w800))),OutlinedButton.icon(onPressed:loadJobs,icon:const Icon(Icons.refresh),label:const Text('Refresh'))]),
@@ -276,6 +533,6 @@ class _ShellState extends State<Shell> {
       if (error != null) _error(error!),
     ]),
   );
-  Widget _result(dynamic data)=>Container(width:double.infinity,margin:const EdgeInsets.only(top:12),padding:const EdgeInsets.all(16),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16),border:Border.all(color:const Color(0xFFE4E5EF))),child:SelectableText(pretty(data),style:const TextStyle(fontFamily:'monospace',fontSize:11,height:1.5,color:ink)));
+  
  Widget _error(String s)=>Container(width:double.infinity,margin:const EdgeInsets.only(top:12),padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:const Color(0xFFFFF1F0),borderRadius:BorderRadius.circular(12),border:Border.all(color:const Color(0xFFF1C5C1))),child:Text(s,style:const TextStyle(color:Color(0xFF9D2922),fontSize:12)));
 }
