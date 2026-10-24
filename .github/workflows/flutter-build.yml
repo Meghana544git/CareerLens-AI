@@ -26,7 +26,7 @@ jobs:
           channel: stable
           cache: true
       - name: Generate Flutter platform projects
-        run: flutter create --project-name career_lens_ai --platforms android,web,windows .
+        run: flutter create --project-name career_lens_ai --org com.meghanayara --platforms android,web,windows .
       - name: Set Android compile SDK to 36
         shell: bash
         run: |
@@ -52,6 +52,13 @@ jobs:
                   found = True
           if not found:
               raise SystemExit("Could not find a supported Android compile SDK setting")
+
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          if manifest.exists():
+              text = manifest.read_text()
+              text = re.sub(r'android:label="[^"]+"', 'android:label="CareerLens AI"', text, count=1)
+              manifest.write_text(text)
+              print("Set Android app label to CareerLens AI")
           PY
       - name: Resolve dependencies
         run: flutter pub get
