@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'pdf_download.dart';
 
 const purple=Color(0xFF6557E8), ink=Color(0xFF252640), muted=Color(0xFF777B91), bg=Color(0xFFF6F7FB);
 void main()=>runApp(const CareerLensApp());
@@ -413,7 +414,7 @@ class _ShellState extends State<Shell> {
         ),
       );
       final bytes = await pdf.save();
-      await Printing.sharePdf(bytes: bytes, filename: 'CareerLens_Cover_Letter.pdf');
+      await downloadPdf(bytes, 'CareerLens_Cover_Letter.pdf');
       if (mounted) toast('Your cover letter PDF is ready.');
     } catch (e) {
       showError(e);
