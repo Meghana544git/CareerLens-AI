@@ -122,6 +122,10 @@ jobs:
         env:
           CAREERLENS_API_BASE_URL: http://127.0.0.1:5000
         run: python scripts/smoke_test_api.py
+      - name: Smoke-test production backend before publishing
+        env:
+          CAREERLENS_API_BASE_URL: https://career-lens-ai-gilt.vercel.app
+        run: python scripts/smoke_test_api.py
       - name: Build Android APK
         if: github.event_name == 'workflow_dispatch'
         run: flutter build apk --debug
