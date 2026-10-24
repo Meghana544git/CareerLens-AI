@@ -8,7 +8,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import 'pdf_download.dart';
 
 const purple=Color(0xFF6557E8), ink=Color(0xFF252640), muted=Color(0xFF777B91), bg=Color(0xFFF6F7FB);
