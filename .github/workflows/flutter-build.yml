@@ -27,6 +27,27 @@ jobs:
           cache: true
       - name: Generate Flutter platform projects
         run: flutter create --project-name career_lens_ai --org com.meghanayara --platforms android,web,windows .
+      - name: Set CareerLens web branding
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          index = Path("web/index.html")
+          if index.exists():
+              text = index.read_text()
+              text = text.replace('<meta name="description" content="A new Flutter project.">', '<meta name="description" content="CareerLens AI helps students and job seekers improve resumes, prepare for interviews, analyze skill gaps and plan their careers.">')
+              text = text.replace('<meta name="apple-mobile-web-app-title" content="career_lens_ai">', '<meta name="apple-mobile-web-app-title" content="CareerLens AI">')
+              text = text.replace('<title>career_lens_ai</title>', '<title>CareerLens AI | AI Career Studio</title>')
+              index.write_text(text)
+          manifest = Path("web/manifest.json")
+          if manifest.exists():
+              data = json.loads(manifest.read_text())
+              data["name"] = "CareerLens AI"
+              data["short_name"] = "CareerLens"
+              data["description"] = "Your AI career workspace."
+              manifest.write_text(json.dumps(data, indent=2) + "\\n")
+          PY
       - name: Set Android compile SDK to 36
         shell: bash
         run: |
@@ -69,6 +90,12 @@ jobs:
         run: dart format lib/main.dart
       - name: Analyze Flutter source
         run: flutter analyze --no-fatal-infos
+      - name: Run Flutter tests
+        run: flutter test
+      - name: Smoke-test the deployed API
+        env:
+          CAREERLENS_API_BASE_URL: https://career-lens-ai-gilt.vercel.app
+        run: python scripts/smoke_test_api.py
       - name: Build Android APK
         if: github.event_name == 'workflow_dispatch'
         run: flutter build apk --debug
@@ -82,13 +109,14 @@ jobs:
           rm -rf flutter_web_site
           mkdir -p flutter_web_site
           cp -a build/web/. flutter_web_site/
+          rm -f flutter_web_site/.last_build_id
       - name: Commit generated platform folders and static site
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add android web windows flutter_web_site
+          git add lib/main.dart android web windows flutter_web_site
           if ! git diff --cached --quiet; then
-            git commit -m "Generate Flutter platform runners"
+            git commit -m "Verified Flutter web build"
             git push origin flutter-app
           else
             echo "Platform runners already committed."
